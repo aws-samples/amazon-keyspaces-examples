@@ -1,6 +1,6 @@
 # Amazon Keyspaces (for Apache Cassandra) Examples
 
-This repository contains a set of example projects for the [Amazon Keyspace](https://docs.aws.amazon.com/keyspaces/latest/devguide/what-is-keyspaces.html)
+This repository contains a set of example projects for [Amazon Keyspaces](https://docs.aws.amazon.com/keyspaces/latest/devguide/what-is-keyspaces.html)
 
 ## Table of Contents
 1. [About this Repo](#About)
@@ -10,7 +10,7 @@ This repository contains a set of example projects for the [Amazon Keyspace](htt
 
 
 ## About this Repo <a name="About"></a>
-This repo is our official list of Amazon Keyspaces example code. The repo is subdivided into sections for each language (see ["Examples"](#Examples)). Each language has its own subsection of examples with the ultimate aim of complete language parity (same subset of examples exist in each language). These examples each provide a demonstration of a common service implementation, or infrastructure pattern that could be useful in your use of the Amazon Keyspaces for building your own infrastructure.
+This repo is our official list of Amazon Keyspaces example code. The repo is subdivided into sections for each language (see ["Examples"](#Examples)). Each language has its own subsection of examples with the goal to achieve language parity (same subset of examples exist in each language). These examples demonstrate various common service implementations, or infrastructure patterns that could be useful in your use of Amazon Keyspaces when building your own infrastructure.
 
 We welcome contributions to this repo in the form of fixes to existing examples or addition of new examples. For more information on contributing, please see the [CONTRIBUTING](https://github.com/aws-samples/aws-keyspaces-examples/tree/master/CONTRIBUTING.md) guide.
 
@@ -18,7 +18,7 @@ This is considered an intermediate learning resource and should typically be ref
 
 
 ## Examples <a name="Examples"></a>
-This repo contains examples in each language supported by the Amazon Keyspaces. This is not exhaustive.
+This repo contains examples in each language supported by Amazon Keyspaces. This is not exhaustive.
 
 - [Java Examples](https://github.com/aws-samples/aws-keyspaces-examples/tree/master/java)
 
@@ -29,7 +29,7 @@ While this is an excellent learning resource for Amazon Keyspaces, there are oth
 ### Official Resources
 - [Developer Guide](https://docs.aws.amazon.com/keyspaces/latest/devguide/what-is-keyspaces.html)
 
-If you have created a Amazon Keyspaces learning resource and would like it to be listed here, please read the related [CONTRIBUTING](https://github.com/aws-samples/aws-keyspaces-examples/blob/master/CONTRIBUTING.md#Resources) section for more info.
+If you have created an Amazon Keyspaces learning resource and would like it to be listed here, please read the related [CONTRIBUTING](https://github.com/aws-samples/aws-keyspaces-examples/blob/master/CONTRIBUTING.md#Resources) section for more info.
 
 
 
