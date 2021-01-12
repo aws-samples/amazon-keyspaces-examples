@@ -1,6 +1,6 @@
 ## Overview
 
-This is directory contains java Sample code for connecting to Amazon Keyspaces.
+This directory contains Java Sample code for connecting to Amazon Keyspaces.
 
 ### Table of Contents
 
