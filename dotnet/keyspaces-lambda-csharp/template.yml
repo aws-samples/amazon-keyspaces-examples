@@ -1,0 +1,21 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: An AWS Lambda application that calls and queries Amazon Keyspaces.
+Resources:
+  function:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: keyspaces-lambda-csharp::keyspaces_lambda_csharp.LambdaSample::FunctionHandler
+      Runtime: dotnetcore3.1
+      CodeUri: src/keyspaces-lambda-csharp/bin/Release/netcoreapp3.1/keyspaces-lambda-csharp.zip
+      Description: Calls and queries Amazon Keyspaces
+      MemorySize: 512
+      Timeout: 100
+      # Function's execution role
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambdaReadOnlyAccess
+        - AWSXrayWriteOnlyAccess
+        - AWSLambdaVPCAccessExecutionRole
+        - AmazonKeyspacesReadOnlyAccess
+      Tracing: Active
