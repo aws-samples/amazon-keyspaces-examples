@@ -20,7 +20,8 @@ This is considered an intermediate learning resource and should typically be ref
 ## Examples <a name="Examples"></a>
 This repo contains examples in each language supported by Amazon Keyspaces. This is not exhaustive.
 
-- [Java Examples](https://github.com/aws-samples/aws-keyspaces-examples/tree/master/java)
+- [Java Examples](https://github.com/aws-samples/amazon-keyspaces-examples/tree/main/java)
+- [C#/.NET Examples](https://github.com/aws-samples/amazon-keyspaces-examples/tree/main/dotnet)
 
 
 ## Learning Resources <a name="Learning"></a>
