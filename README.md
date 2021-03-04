@@ -30,7 +30,7 @@ While this is an excellent learning resource for Amazon Keyspaces, there are oth
 ### Official Resources
 - [Developer Guide](https://docs.aws.amazon.com/keyspaces/latest/devguide/what-is-keyspaces.html)
 
-If you have created an Amazon Keyspaces learning resource and would like it to be listed here, please read the related [CONTRIBUTING](https://github.com/aws-samples/aws-keyspaces-examples/blob/master/CONTRIBUTING.md#Resources) section for more info.
+If you have created an Amazon Keyspaces learning resource and would like it to be listed here, please read the related [CONTRIBUTING](https://github.com/aws-samples/amazon-keyspaces-examples/blob/main/CONTRIBUTING.md) section for more info.
 
 
 
