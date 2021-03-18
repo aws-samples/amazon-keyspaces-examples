@@ -1,0 +1,4 @@
+dist/
+build/
+sigv4_sample.egg-info
+sigv4_sample/__pycache__/
