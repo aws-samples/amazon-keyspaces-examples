@@ -24,6 +24,7 @@ This repo contains examples in each language supported by Amazon Keyspaces. This
 - [C#/.NET Examples](https://github.com/aws-samples/amazon-keyspaces-examples/tree/main/dotnet)
 - [Ruby Examples](https://github.com/aws-samples/amazon-keyspaces-examples/tree/main/ruby)
 - [Python Examples](https://github.com/aws-samples/amazon-keyspaces-examples/tree/main/python)
+- [Scala Examples](https://github.com/aws-samples/amazon-keyspaces-examples/tree/main/scala)
 
 ## Learning Resources <a name="Learning"></a>
 While this is an excellent learning resource for Amazon Keyspaces, there are other resources that can be referenced to assist with your learning/development process.
