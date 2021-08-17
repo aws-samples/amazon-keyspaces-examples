@@ -1,3 +1,6 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: MIT-0
+
 // Variables
 const cassandra = require('cassandra-driver');
 const fs = require('fs');
