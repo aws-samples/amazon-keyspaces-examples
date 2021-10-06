@@ -25,6 +25,9 @@ This repo contains examples in each language supported by Amazon Keyspaces. This
 - [Ruby Examples](https://github.com/aws-samples/amazon-keyspaces-examples/tree/main/ruby)
 - [Python Examples](https://github.com/aws-samples/amazon-keyspaces-examples/tree/main/python)
 - [Scala Examples](https://github.com/aws-samples/amazon-keyspaces-examples/tree/main/scala)
+- [SageMaker (Python) Examples](https://github.com/aws-samples/amazon-keyspaces-examples/tree/main/python/datastax-v3/SageMaker)
+
+
 
 ## Learning Resources <a name="Learning"></a>
 While this is an excellent learning resource for Amazon Keyspaces, there are other resources that can be referenced to assist with your learning/development process.
@@ -39,4 +42,3 @@ If you have created an Amazon Keyspaces learning resource and would like it to b
 # License <a name="License"></a>
 
 This library is licensed under the MIT-0 License.
-
