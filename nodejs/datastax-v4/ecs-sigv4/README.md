@@ -44,9 +44,11 @@ To run through this walkthrough, you will need to have the following tools insta
 
 ### Step 1: Create environment
 
-Clone the code sample and switch to the root directory:
+Clone the `amazon-keyspace-examples` repo and switch to the
+`ecs-sigv4` directory:
 ```
-cd aws-ecs-keyspaces
+git clone https://github.com/aws-samples/amazon-keyspaces-examples.git
+cd amazon-keyspaces-examples/nodejs/datastax-v4/ecs-sigv4
 ```
 
 Create an environment stack using:
