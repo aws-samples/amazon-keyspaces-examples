@@ -6,7 +6,11 @@ This code sample demonstrates how to access Amazon Keyspaces from ECS Tasks runn
 
 The code sample includes a CloudFormation template to build an environment, and two containerised applications *load-data* and *query-api*.
 
-The environment includes a VPC with public and private subnets, an ECS cluster, an application load balancer, an Amazon Keyspaces keyspace, and IAM roles for use with ECS tasks.
+The environment includes a VPC with public and private subnets, an ECS cluster, an application load balancer, an Amazon Keyspaces keyspace, a VPC endpoint for access to Keyspaces, and IAM roles for use with ECS tasks as shown below:
+
+![Infrastructure](./Infrastructure.png)
+
+The application architecture is shown below:
 
 ![Architecture](./Architecture.png)
 
@@ -38,9 +42,8 @@ Once *npm* is updated to reflect the latest version, this line can be changed to
 To run through this walkthrough, you will need to have the following tools installed:
 - [AWS CLI](https://aws.amazon.com/cli/)
 - [docker](https://www.docker.com/)
-- [curl](https://curl.se/download.html)
-- envsubst (part of the [GNU gettext](https://www.gnu.org/software/gettext/) package)
-  - OSX version available via [homebrew](https://formulae.brew.sh/formula/gettext) 
+- [curl](https://curl.se/download.html) (usually installed by default on Linux and MacOS)
+- cat (standard Linux / MacOS command)
 
 ### Step 1: Create environment
 
@@ -51,7 +54,7 @@ git clone https://github.com/aws-samples/amazon-keyspaces-examples.git
 cd amazon-keyspaces-examples/nodejs/datastax-v4/ecs-sigv4
 ```
 
-Create an environment stack using:
+Create the environment stack using:
 ```
 aws cloudformation deploy \
   --stack-name demo-env \
@@ -65,6 +68,8 @@ This stack includes:
 - a VPC with public and private subnets (includes a NAT gateway)
 - an ECS cluster (with associated security group and log group)
 - an Application Load Balancer for exposing the API server
+- NAT Gateways (to enable containers in private subnets to access the Internet)
+- a VPC endpoint for accessing Amazon Keyspaces
 - a Keyspace
 - IAM roles for use with ECS tasks.
 
@@ -127,7 +132,11 @@ export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output tex
 
 Log in to ECR:
 ```
-$(aws ecr get-login --no-include-email)
+aws ecr get-login-password \
+    --region $AWS_REGION \
+| docker login \
+    --username AWS \
+    --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 ```
 
 Build the application and push to ECR:
@@ -147,7 +156,7 @@ docker push $load_data_ecr_uri:latest
 
 Register an ECS task definition for *load-data*:
 ```
-envsubst <<EoF >load-data-taskdef.json
+cat <<EoF >load-data-taskdef.json
 {
   "family": "load-data",
   "cpu": "256",
@@ -207,7 +216,7 @@ docker push $query_api_ecr_uri:latest
 
 Register an ECS task definition for *query-api*.
 ```
-envsubst <<EoF >query-api-taskdef.json
+cat <<EoF >query-api-taskdef.json
 {
   "family": "query-api",
   "cpu": "256",

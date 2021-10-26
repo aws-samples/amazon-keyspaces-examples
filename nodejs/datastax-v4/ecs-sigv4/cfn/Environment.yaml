@@ -306,6 +306,23 @@ Resources:
     Properties: 
       KeyspaceName: !Ref KeyspaceName
 
+# Private VPC endpoint for Keyspaces access
+
+  KeyspacesVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.cassandra'
+      PrivateDnsEnabled: True
+      SecurityGroupIds:
+        - !Ref ContainerSecurityGroup
+      SubnetIds:
+        - !Ref PrivateSubnetOne
+        - !Ref PrivateSubnetTwo
+      VpcEndpointType: Interface
+      VpcId: !Ref VPC
+
+# Keyspaces client roles
+
   KeyspacesECSReadRole:
     Type: AWS::IAM::Role
     Properties:
@@ -325,8 +342,13 @@ Resources:
           - Effect: Allow
             Action: "cassandra:Select"
             Resource:
-              - !Sub "arn:aws:cassandra:${AWS::Region}:${AWS::AccountId}:/keyspace/${KeyspaceName}/*"
-              - !Sub "arn:aws:cassandra:${AWS::Region}:${AWS::AccountId}:/keyspace/system*"
+            - !Sub "arn:aws:cassandra:${AWS::Region}:${AWS::AccountId}:/keyspace/${KeyspaceName}/*"
+            - !Sub "arn:aws:cassandra:${AWS::Region}:${AWS::AccountId}:/keyspace/system*"
+          - Effect: Allow
+            Action:
+            - "ec2:DescribeNetworkInterfaces"
+            - "ec2:DescribeVpcEndpoints"
+            Resource: "*"
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/CloudWatchFullAccess
 
@@ -351,6 +373,11 @@ Resources:
             Resource:
             - !Sub "arn:aws:cassandra:${AWS::Region}:${AWS::AccountId}:/keyspace/${KeyspaceName}/*"
             - !Sub "arn:aws:cassandra:${AWS::Region}:${AWS::AccountId}:/keyspace/system*"
+          - Effect: Allow
+            Action:
+            - "ec2:DescribeNetworkInterfaces"
+            - "ec2:DescribeVpcEndpoints"
+            Resource: "*"
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/CloudWatchFullAccess
 
