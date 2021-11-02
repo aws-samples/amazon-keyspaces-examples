@@ -57,9 +57,9 @@ cd amazon-keyspaces-examples/nodejs/datastax-v4/ecs-sigv4
 Create the environment stack using:
 ```
 aws cloudformation deploy \
-  --stack-name demo-env \
+  --stack-name ecs-demo \
   --template-file cfn/Environment.yaml \
-  --parameter-overrides "EnvironmentName=demo" "KeyspaceName=demo" \
+  --parameter-overrides "EnvironmentName=ecs-demo" "KeyspaceName=ecs_demo" \
   --capabilities CAPABILITY_IAM
 ```
 
@@ -74,6 +74,26 @@ This stack includes:
 - IAM roles for use with ECS tasks.
 
 Once deployed, extract the following outputs as you will need them to deploy the ECS tasks:
+
+```
+aws cloudformation describe-stacks \
+  --stack-name ecs-demo \
+  --query "Stacks[0].Outputs[*].{key:OutputKey,value:OutputValue}" \
+  --output text \
+| awk '{print "cfn_" $1 "=" $2}' > vars.sh
+source vars.sh
+export TASK_EXEC_ROLE_ARN=$cfn_TaskExecutionRoleArn
+export WRITE_ROLE_ARN=$cfn_KeyspacesECSWriteRoleArn
+export READ_ROLE_ARN=$cfn_KeyspacesECSReadRoleArn
+export LOG_GROUP=$cfn_ClusterLogGroup
+export PRIVATE_SUBNET_ONE=$cfn_PrivateSubnetOne
+export PRIVATE_SUBNET_TWO=$cfn_PrivateSubnetTwo
+export CONTAINER_SG=$cfn_ContainerSecurityGroup
+export EXTERNAL_URL=$cfn_ExternalUrl
+export SERVICE_TG=$cfn_ServiceTargetGroup
+```
+
+<!--
 ```
 export TASK_EXEC_ROLE_ARN=$(aws cloudformation describe-stacks \
   --stack-name demo-env \
@@ -121,10 +141,11 @@ export SERVICE_TG=$(aws cloudformation describe-stacks \
   --output text \
 )
 ```
+-->
 
 Also set the following environment variables:
 ```
-export AWS_REGION=<your-region>
+export AWS_REGION=$(aws configure get region)
 export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 ```
 
@@ -148,7 +169,6 @@ load_data_ecr_uri=$( \
         --query repository.repositoryUri \
         --output text \
 )
-curl https://certs.secureserver.net/repository/sf-class2-root.crt -O
 docker build -t load-data:latest .
 docker tag load-data:latest $load_data_ecr_uri:latest
 docker push $load_data_ecr_uri:latest
@@ -171,7 +191,7 @@ cat <<EoF >load-data-taskdef.json
     {
       "name": "load-data",
       "image": "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/load-data",
-      "command" : [ "node", "load-data", "-r ${AWS_REGION}", "-k demo", "-t countries"],
+      "command" : [ "node", "load-data", "-r ${AWS_REGION}", "-k ecs_demo", "-t countries"],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
@@ -190,7 +210,7 @@ aws ecs register-task-definition --cli-input-json file://load-data-taskdef.json
 
 Run the job using Fargate:
 ```
-aws ecs run-task --cluster demo --launch-type FARGATE --task-definition load-data --network-configuration "awsvpcConfiguration={subnets=[$PRIVATE_SUBNET_ONE,$PRIVATE_SUBNET_TWO],securityGroups=[$CONTAINER_SG]}"
+aws ecs run-task --cluster ecs-demo --launch-type FARGATE --task-definition load-data --network-configuration "awsvpcConfiguration={subnets=[$PRIVATE_SUBNET_ONE,$PRIVATE_SUBNET_TWO],securityGroups=[$CONTAINER_SG]}"
 ```
 
 This task creates a table named `countries` in the keyspace `demo`, and populates it with some country data. You can monitor the progress of the task execution in the ECS console. Once the task has completed you can use the Amazon Keyspaces console to verfiy that the table exists, and to query the table.
@@ -208,7 +228,6 @@ query_api_ecr_uri=$( \
         --query repository.repositoryUri \
         --output text \
 )
-curl https://certs.secureserver.net/repository/sf-class2-root.crt -O
 docker build -t query-api:latest .
 docker tag query-api:latest $query_api_ecr_uri:latest
 docker push $query_api_ecr_uri:latest
@@ -231,7 +250,7 @@ cat <<EoF >query-api-taskdef.json
     {
       "name": "query-api",
       "image": "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/query-api",
-      "command" : [ "node", "query-api-server", "-r ${AWS_REGION}", "-k demo", "-t countries"],
+      "command" : [ "node", "query-api-server", "-r ${AWS_REGION}", "-k ecs_demo", "-t countries"],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
@@ -256,7 +275,7 @@ aws ecs register-task-definition --cli-input-json file://query-api-taskdef.json
 
 Run the service using Fargate
 ```
-aws ecs create-service --cluster demo --service-name query-api-server --launch-type FARGATE --task-definition query-api --network-configuration "awsvpcConfiguration={subnets=[$PRIVATE_SUBNET_ONE,$PRIVATE_SUBNET_TWO],securityGroups=[$CONTAINER_SG]}" --desired-count 2 --load-balancers "targetGroupArn=${SERVICE_TG},containerName=query-api,containerPort=80"
+aws ecs create-service --cluster ecs-demo --service-name query-api-server --launch-type FARGATE --task-definition query-api --network-configuration "awsvpcConfiguration={subnets=[$PRIVATE_SUBNET_ONE,$PRIVATE_SUBNET_TWO],securityGroups=[$CONTAINER_SG]}" --desired-count 2 --load-balancers "targetGroupArn=${SERVICE_TG},containerName=query-api,containerPort=80"
 ```
 
 Wait about 30 seconds for the service to start running and then test as follows.
