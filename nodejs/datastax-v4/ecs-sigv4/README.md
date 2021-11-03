@@ -57,9 +57,11 @@ cd amazon-keyspaces-examples/nodejs/datastax-v4/ecs-sigv4
 Create the environment stack using:
 ```
 aws cloudformation deploy \
-  --stack-name ecs-demo \
+  --stack-name demo-infrastructure \
   --template-file cfn/Environment.yaml \
-  --parameter-overrides "EnvironmentName=ecs-demo" "KeyspaceName=ecs_demo" \
+  --parameter-overrides \
+    "EnvironmentName=demo-staging" \
+    "KeyspaceName=geography_domain" \
   --capabilities CAPABILITY_IAM
 ```
 
@@ -77,7 +79,7 @@ Once deployed, extract the following outputs as you will need them to deploy the
 
 ```
 aws cloudformation describe-stacks \
-  --stack-name ecs-demo \
+  --stack-name demo-infrastructure \
   --query "Stacks[0].Outputs[*].{key:OutputKey,value:OutputValue}" \
   --output text \
 | awk '{print "cfn_" $1 "=" $2}' > vars.sh
@@ -191,7 +193,7 @@ cat <<EoF >load-data-taskdef.json
     {
       "name": "load-data",
       "image": "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/load-data",
-      "command" : [ "node", "load-data", "-r ${AWS_REGION}", "-k ecs_demo", "-t countries"],
+      "command" : [ "node", "load-data", "-r ${AWS_REGION}", "-k geography_domain", "-t countries"],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
@@ -210,7 +212,11 @@ aws ecs register-task-definition --cli-input-json file://load-data-taskdef.json
 
 Run the job using Fargate:
 ```
-aws ecs run-task --cluster ecs-demo --launch-type FARGATE --task-definition load-data --network-configuration "awsvpcConfiguration={subnets=[$PRIVATE_SUBNET_ONE,$PRIVATE_SUBNET_TWO],securityGroups=[$CONTAINER_SG]}"
+aws ecs run-task \
+  --cluster demo-staging \
+  --launch-type FARGATE \
+  --task-definition load-data \
+  --network-configuration "awsvpcConfiguration={subnets=[$PRIVATE_SUBNET_ONE,$PRIVATE_SUBNET_TWO],securityGroups=[$CONTAINER_SG]}"
 ```
 
 This task creates a table named `countries` in the keyspace `demo`, and populates it with some country data. You can monitor the progress of the task execution in the ECS console. Once the task has completed you can use the Amazon Keyspaces console to verfiy that the table exists, and to query the table.
@@ -250,7 +256,7 @@ cat <<EoF >query-api-taskdef.json
     {
       "name": "query-api",
       "image": "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/query-api",
-      "command" : [ "node", "query-api-server", "-r ${AWS_REGION}", "-k ecs_demo", "-t countries"],
+      "command" : [ "node", "query-api-server", "-r ${AWS_REGION}", "-k geography_domain", "-t countries"],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
@@ -275,7 +281,14 @@ aws ecs register-task-definition --cli-input-json file://query-api-taskdef.json
 
 Run the service using Fargate
 ```
-aws ecs create-service --cluster ecs-demo --service-name query-api-server --launch-type FARGATE --task-definition query-api --network-configuration "awsvpcConfiguration={subnets=[$PRIVATE_SUBNET_ONE,$PRIVATE_SUBNET_TWO],securityGroups=[$CONTAINER_SG]}" --desired-count 2 --load-balancers "targetGroupArn=${SERVICE_TG},containerName=query-api,containerPort=80"
+aws ecs create-service \
+  --cluster demo-staging \
+  --service-name query-api-server\
+  --launch-type FARGATE \
+  --task-definition query-api \
+  --network-configuration "awsvpcConfiguration={subnets=[$PRIVATE_SUBNET_ONE,$PRIVATE_SUBNET_TWO],securityGroups=[$CONTAINER_SG]}" \
+  --desired-count 2 \
+  --load-balancers "targetGroupArn=${SERVICE_TG},containerName=query-api,containerPort=80"
 ```
 
 Wait about 30 seconds for the service to start running and then test as follows.
@@ -295,8 +308,8 @@ curl $EXTERNAL_URL/countries/us?pretty
 
 Stop the ECS service
 ```
-aws ecs update-service --cluster demo --service query-api-server --desired-count=0
-aws ecs delete-service --cluster demo --service query-api-server
+aws ecs update-service --cluster demo-staging --service query-api-server --desired-count=0
+aws ecs delete-service --cluster demo-staging --service query-api-server
 ```
 
 Delete the ECR repositories:
@@ -307,5 +320,5 @@ aws ecr delete-repository --repository-name query-api --force
 
 Delete the environment stack:
 ```
-aws cloudformation delete-stack --stack-name demo-env
+aws cloudformation delete-stack --stack-name demo-infrastructure
 ```
