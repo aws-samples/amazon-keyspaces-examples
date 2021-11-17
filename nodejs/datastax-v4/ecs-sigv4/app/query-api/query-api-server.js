@@ -75,7 +75,7 @@ async function runQueryApiServer() {
       executeQuery(query, res, pretty)
     })
     app.get('/ping', (req, res) => {
-      res.send("ok")
+      res.send("ok\n")
     })
     log.info('Routing configured')
 

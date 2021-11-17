@@ -6,7 +6,11 @@ This code sample demonstrates how to access Amazon Keyspaces from ECS Tasks runn
 
 The code sample includes a CloudFormation template to build an environment, and two containerised applications *load-data* and *query-api*.
 
-The environment includes a VPC with public and private subnets, an ECS cluster, an application load balancer, an Amazon Keyspaces keyspace, and IAM roles for use with ECS tasks.
+The environment includes a VPC with public and private subnets, an ECS cluster, an application load balancer, an Amazon Keyspaces keyspace, a VPC endpoint for access to Keyspaces, and IAM roles for use with ECS tasks as shown below:
+
+![Infrastructure](./Infrastructure.png)
+
+The application architecture is shown below:
 
 ![Architecture](./Architecture.png)
 
@@ -38,9 +42,8 @@ Once *npm* is updated to reflect the latest version, this line can be changed to
 To run through this walkthrough, you will need to have the following tools installed:
 - [AWS CLI](https://aws.amazon.com/cli/)
 - [docker](https://www.docker.com/)
-- [curl](https://curl.se/download.html)
-- envsubst (part of the [GNU gettext](https://www.gnu.org/software/gettext/) package)
-  - OSX version available via [homebrew](https://formulae.brew.sh/formula/gettext) 
+- [curl](https://curl.se/download.html) (usually installed by default on Linux and MacOS)
+- cat (standard Linux / MacOS command)
 
 ### Step 1: Create environment
 
@@ -51,12 +54,14 @@ git clone https://github.com/aws-samples/amazon-keyspaces-examples.git
 cd amazon-keyspaces-examples/nodejs/datastax-v4/ecs-sigv4
 ```
 
-Create an environment stack using:
+Create the environment stack using:
 ```
 aws cloudformation deploy \
-  --stack-name demo-env \
+  --stack-name demo-infrastructure \
   --template-file cfn/Environment.yaml \
-  --parameter-overrides "EnvironmentName=demo" "KeyspaceName=demo" \
+  --parameter-overrides \
+    "EnvironmentName=demo-staging" \
+    "KeyspaceName=geography_domain" \
   --capabilities CAPABILITY_IAM
 ```
 
@@ -65,10 +70,32 @@ This stack includes:
 - a VPC with public and private subnets (includes a NAT gateway)
 - an ECS cluster (with associated security group and log group)
 - an Application Load Balancer for exposing the API server
+- NAT Gateways (to enable containers in private subnets to access the Internet)
+- a VPC endpoint for accessing Amazon Keyspaces
 - a Keyspace
 - IAM roles for use with ECS tasks.
 
 Once deployed, extract the following outputs as you will need them to deploy the ECS tasks:
+
+```
+aws cloudformation describe-stacks \
+  --stack-name demo-infrastructure \
+  --query "Stacks[0].Outputs[*].{key:OutputKey,value:OutputValue}" \
+  --output text \
+| awk '{print "cfn_" $1 "=" $2}' > vars.sh
+source vars.sh
+export TASK_EXEC_ROLE_ARN=$cfn_TaskExecutionRoleArn
+export WRITE_ROLE_ARN=$cfn_KeyspacesECSWriteRoleArn
+export READ_ROLE_ARN=$cfn_KeyspacesECSReadRoleArn
+export LOG_GROUP=$cfn_ClusterLogGroup
+export PRIVATE_SUBNET_ONE=$cfn_PrivateSubnetOne
+export PRIVATE_SUBNET_TWO=$cfn_PrivateSubnetTwo
+export CONTAINER_SG=$cfn_ContainerSecurityGroup
+export EXTERNAL_URL=$cfn_ExternalUrl
+export SERVICE_TG=$cfn_ServiceTargetGroup
+```
+
+<!--
 ```
 export TASK_EXEC_ROLE_ARN=$(aws cloudformation describe-stacks \
   --stack-name demo-env \
@@ -116,10 +143,11 @@ export SERVICE_TG=$(aws cloudformation describe-stacks \
   --output text \
 )
 ```
+-->
 
 Also set the following environment variables:
 ```
-export AWS_REGION=<your-region>
+export AWS_REGION=$(aws configure get region)
 export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 ```
 
@@ -127,7 +155,11 @@ export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output tex
 
 Log in to ECR:
 ```
-$(aws ecr get-login --no-include-email)
+aws ecr get-login-password \
+    --region $AWS_REGION \
+| docker login \
+    --username AWS \
+    --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 ```
 
 Build the application and push to ECR:
@@ -139,7 +171,6 @@ load_data_ecr_uri=$( \
         --query repository.repositoryUri \
         --output text \
 )
-curl https://certs.secureserver.net/repository/sf-class2-root.crt -O
 docker build -t load-data:latest .
 docker tag load-data:latest $load_data_ecr_uri:latest
 docker push $load_data_ecr_uri:latest
@@ -147,7 +178,7 @@ docker push $load_data_ecr_uri:latest
 
 Register an ECS task definition for *load-data*:
 ```
-envsubst <<EoF >load-data-taskdef.json
+cat <<EoF >load-data-taskdef.json
 {
   "family": "load-data",
   "cpu": "256",
@@ -162,7 +193,7 @@ envsubst <<EoF >load-data-taskdef.json
     {
       "name": "load-data",
       "image": "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/load-data",
-      "command" : [ "node", "load-data", "-r ${AWS_REGION}", "-k demo", "-t countries"],
+      "command" : [ "node", "load-data", "-r ${AWS_REGION}", "-k geography_domain", "-t countries"],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
@@ -181,7 +212,11 @@ aws ecs register-task-definition --cli-input-json file://load-data-taskdef.json
 
 Run the job using Fargate:
 ```
-aws ecs run-task --cluster demo --launch-type FARGATE --task-definition load-data --network-configuration "awsvpcConfiguration={subnets=[$PRIVATE_SUBNET_ONE,$PRIVATE_SUBNET_TWO],securityGroups=[$CONTAINER_SG]}"
+aws ecs run-task \
+  --cluster demo-staging \
+  --launch-type FARGATE \
+  --task-definition load-data \
+  --network-configuration "awsvpcConfiguration={subnets=[$PRIVATE_SUBNET_ONE,$PRIVATE_SUBNET_TWO],securityGroups=[$CONTAINER_SG]}"
 ```
 
 This task creates a table named `countries` in the keyspace `demo`, and populates it with some country data. You can monitor the progress of the task execution in the ECS console. Once the task has completed you can use the Amazon Keyspaces console to verfiy that the table exists, and to query the table.
@@ -199,7 +234,6 @@ query_api_ecr_uri=$( \
         --query repository.repositoryUri \
         --output text \
 )
-curl https://certs.secureserver.net/repository/sf-class2-root.crt -O
 docker build -t query-api:latest .
 docker tag query-api:latest $query_api_ecr_uri:latest
 docker push $query_api_ecr_uri:latest
@@ -207,7 +241,7 @@ docker push $query_api_ecr_uri:latest
 
 Register an ECS task definition for *query-api*.
 ```
-envsubst <<EoF >query-api-taskdef.json
+cat <<EoF >query-api-taskdef.json
 {
   "family": "query-api",
   "cpu": "256",
@@ -222,7 +256,7 @@ envsubst <<EoF >query-api-taskdef.json
     {
       "name": "query-api",
       "image": "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/query-api",
-      "command" : [ "node", "query-api-server", "-r ${AWS_REGION}", "-k demo", "-t countries"],
+      "command" : [ "node", "query-api-server", "-r ${AWS_REGION}", "-k geography_domain", "-t countries"],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
@@ -247,7 +281,14 @@ aws ecs register-task-definition --cli-input-json file://query-api-taskdef.json
 
 Run the service using Fargate
 ```
-aws ecs create-service --cluster demo --service-name query-api-server --launch-type FARGATE --task-definition query-api --network-configuration "awsvpcConfiguration={subnets=[$PRIVATE_SUBNET_ONE,$PRIVATE_SUBNET_TWO],securityGroups=[$CONTAINER_SG]}" --desired-count 2 --load-balancers "targetGroupArn=${SERVICE_TG},containerName=query-api,containerPort=80"
+aws ecs create-service \
+  --cluster demo-staging \
+  --service-name query-api-server\
+  --launch-type FARGATE \
+  --task-definition query-api \
+  --network-configuration "awsvpcConfiguration={subnets=[$PRIVATE_SUBNET_ONE,$PRIVATE_SUBNET_TWO],securityGroups=[$CONTAINER_SG]}" \
+  --desired-count 2 \
+  --load-balancers "targetGroupArn=${SERVICE_TG},containerName=query-api,containerPort=80"
 ```
 
 Wait about 30 seconds for the service to start running and then test as follows.
@@ -267,8 +308,8 @@ curl $EXTERNAL_URL/countries/us?pretty
 
 Stop the ECS service
 ```
-aws ecs update-service --cluster demo --service query-api-server --desired-count=0
-aws ecs delete-service --cluster demo --service query-api-server
+aws ecs update-service --cluster demo-staging --service query-api-server --desired-count=0
+aws ecs delete-service --cluster demo-staging --service query-api-server
 ```
 
 Delete the ECR repositories:
@@ -279,5 +320,5 @@ aws ecr delete-repository --repository-name query-api --force
 
 Delete the environment stack:
 ```
-aws cloudformation delete-stack --stack-name demo-env
+aws cloudformation delete-stack --stack-name demo-infrastructure
 ```

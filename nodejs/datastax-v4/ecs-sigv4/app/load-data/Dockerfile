@@ -1,6 +1,6 @@
 FROM node:bullseye-slim
 WORKDIR /usr/src/app
-COPY package*.json ./
+COPY package.json *.js ./
 RUN npm install
-COPY . .
+ADD https://certs.secureserver.net/repository/sf-class2-root.crt ./
 CMD ["node", "load-data.js"]
