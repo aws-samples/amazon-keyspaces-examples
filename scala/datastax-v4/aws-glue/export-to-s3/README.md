@@ -7,7 +7,7 @@ This example provides scala script for exporting Amazon Keyspaces table data to 
 * Amazon S3 bucket to store job configuration and script
 
 ### Export to S3
-The following example exports data to S3 using the spark-cassandra-connector. The script takes three parameters KEYSPACE_NAME, KEYSPACE_TABLE, S3_URI for backup files and FORMAT option (parquet, csv, json).  
+The following example exports data to S3 using the spark-cassandra-connector. The script takes four parameters KEYSPACE_NAME, KEYSPACE_TABLE, S3_URI for backup files and FORMAT option (parquet, csv, json).  
 
 
 ```
