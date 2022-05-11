@@ -54,7 +54,7 @@ Included is a sample permissions-policy for executing Glue job. You can use mana
 ## Cassandra driver configuration to connect to Amazon Keyspaces
 The following configuration for connecting to Amazon Keyspaces with the spark-cassandra connector.
 
-Using the RateLimitingRequestThrottler we can ensure that request do not exceed configured Keyspaces capacity. The standard DPU creates two executors per worker. The RateLimitingRequestThrottler in this example is set for 1000 request per second. With this configuration and standard DPU you will achieve 2000 request per Glue worker. Adjust the max-requests-per-second accordingly to fit your workload. Increase the number of workers to scale throughput to a table.
+Using the RateLimitingRequestThrottler we can ensure that request do not exceed configured Keyspaces capacity. The standard DPU creates two executors per worker. The RateLimitingRequestThrottler in this example is set for 1000 request per second. With this configuration and G.1X DPU you will achieve 1000 request per Glue worker. Adjust the max-requests-per-second accordingly to fit your workload. Increase the number of workers to scale throughput to a table. 
 
 ```
 datastax-java-driver {
@@ -116,7 +116,7 @@ aws glue create-job \
     --description "Export Amazon Keyspaces table to s3" \
     --glue-version "2.0" \
     --number-of-workers 5 \
-    --worker-type "Standard" \
+    --worker-type "G.1X" \
     --command "Name=glueetl,ScriptLocation=s3://amazon-keyspaces-backups/scripts/export-sample.scala" \
     --default-arguments '{
         "--job-language":"scala",
