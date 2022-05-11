@@ -22,7 +22,7 @@ object GlueApp {
     import com.datastax.spark.connector._
     import org.apache.spark.sql.cassandra._
     import sparkSession.implicits._
-    // @params: [JOB_NAME]
+
     val args = GlueArgParser.getResolvedOptions(sysArgs, Seq("JOB_NAME", "KEYSPACE_NAME", "TABLE_NAME", "S3_URI", "FORMAT").toArray)
     Job.init(args("JOB_NAME"), glueContext, args.asJava)
 
@@ -36,8 +36,7 @@ object GlueApp {
       .options(Map( "table" -> tableName, "keyspace" -> keyspaceName))
       .load()
 
-    
-    tableDf.write.format(backupFormat).mode(SaveMode.Overwrite).save(backupS3)
+    tableDf.write.format(backupFormat).mode(SaveMode.ErrorIfExists).save(backupS3)
 
     Job.commit()
   }
@@ -114,7 +113,7 @@ You can use the following command to create a glue job using the script provided
 aws glue create-job \
     --name "AmazonKeyspacesExport" \
     --role "GlueKeyspacesRestore" \
-    --description "Export Amazon Keyspaces table to s3"
+    --description "Export Amazon Keyspaces table to s3" \
     --glue-version "2.0" \
     --number-of-workers 5 \
     --worker-type "Standard" \
@@ -125,8 +124,8 @@ aws glue create-job \
         "--KEYSPACE_NAME":"my_keyspace",
         "--TABLE_NAME":"my_table",
         "--S3_URI":"s3://amazon-keyspaces-backups/snap-shots/",
-        "--extra-jars":"s3://keyspaces-backups/spark-connector-jars/spark-cassandra-connector-assembly_2.11-2.5.2.jar",
-        "--extra-files":"s3://keyspaces-backups/driver-configurations/application.conf",
+        "--extra-jars":"s3://amazon-keyspaces-backups/jars/spark-cassandra-connector-assembly_2.11-2.5.2.jar",
+        "--extra-files":"s3://amazon-keyspaces-backups/conf/application.conf",
         "--conf":"spark.cassandra.connection.config.profile.path=application.conf",
         "--class":"GlueApp"
     }'

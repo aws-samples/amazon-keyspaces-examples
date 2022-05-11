@@ -27,7 +27,6 @@ object GlueApp {
     import org.apache.spark.sql.cassandra._
     import sparkSession.implicits._
 
-    // @params: [JOB_NAME]
     val args = GlueArgParser.getResolvedOptions(sysArgs, Seq("JOB_NAME", "KEYSPACE_NAME", "TABLE_NAME", "S3_URI", "FORMAT").toArray)
     Job.init(args("JOB_NAME"), glueContext, args.asJava)
 
@@ -41,7 +40,7 @@ object GlueApp {
       .options(Map( "table" -> tableName, "keyspace" -> keyspaceName))
       .load()
 
-    tableDf.write.format(backupFormat).mode(SaveMode.Overwrite).save(backupS3)
+    tableDf.write.format(backupFormat).mode(SaveMode.ErrorIfExists).save(backupS3)
 
     Job.commit()
   }
