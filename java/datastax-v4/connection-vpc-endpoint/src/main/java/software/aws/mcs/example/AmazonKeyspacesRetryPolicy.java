@@ -82,10 +82,10 @@ public class AmazonKeyspacesRetryPolicy implements RetryPolicy {
 
 
     protected RetryDecision determineRetryDecision(int retryCount) {
-        if (retryCount > maxRetryCount) {
-            return RetryDecision.RETHROW;
-        } else {
+         if (retryCount < maxRetryCount) {
             return RetryDecision.RETRY_SAME;
+        } else {
+            return RetryDecision.RETHROW;
         }
     }
 
