@@ -1,14 +1,14 @@
-# Migration to Amazon Keyspaces without a hassle
-This example provides scala scripts for migrating the Cassandra workload to Amazon Keyspaces (for Apache Cassandra) using AWS Glue. 
+# Migration to Amazon Keyspaces from Apache Cassandra
+This example provides scala scripts for migrating the Cassandra workload to Amazon Keyspaces (for Apache Cassandra) using AWS Glue.
 This allows you to migrate data from the Cassandra cluster to Amazon Keyspaces without setting up and provisioning a spark cluster.
 
 ## Prerequisites
 * Cassandra source table
-* Amazon Keyspaces's target table to replicate the workload 
+* Amazon Keyspaces's target table to replicate the workload
 * Amazon S3 bucket to store intermediate parquet files with incremental data changes
 * Amazon S3 bucket to store job configuration and scripts
 
-## Getting started 
+## Getting started
 ### Create a target keyspace and table in Amazon Keyspaces Console
 
 `CREATE KEYSPACE target_keyspace WITH replication = {'class': 'SingleRegionStrategy'}`
@@ -23,13 +23,13 @@ This allows you to migrate data from the Cassandra cluster to Amazon Keyspaces w
     email text,
     updatetime text,
 PRIMARY KEY (userid, level, gameid)
-) WITH default_time_to_live = 0 AND CUSTOM_PROPERTIES = 
+) WITH default_time_to_live = 0 AND CUSTOM_PROPERTIES =
     {'capacity_mode':{ 'throughput_mode':'PROVISIONED',
                        'write_capacity_units':76388,
-                       'read_capacity_units':3612 }} 
+                       'read_capacity_units':3612 }}
   AND CLUSTERING ORDER BY (level ASC, gameid ASC)`
 
-After the table was created consider to switch the table to on-demand mode to avoid unnecessary charges. 
+After the table was created consider to switch the table to on-demand mode to avoid unnecessary charges.
 
 The following script will update the throughput mode.
 
@@ -38,20 +38,20 @@ The following script will update the throughput mode.
 }`
 
 ### Export the Cassandra workload to S3 in parquet format
-The following example offloads data to S3 using the spark-cassandra-connector. 
+The following example offloads data to S3 using the spark-cassandra-connector.
 The script takes four parameters KEYSPACE_NAME, KEYSPACE_TABLE, S3_URI_CURRENT_CHANGE, S3_URI_CURRENT_CHANGE, and S3_URI_NEW_CHANGE.
 
 ```scala
 object GlueApp {
   def main(sysArgs: Array[String]) {
-      
+
     val spark: SparkContext = new SparkContext()
     val glueContext: GlueContext = new GlueContext(spark)
     val sparkSession: SparkSession = glueContext.getSparkSession
     import com.datastax.spark.connector._
     import org.apache.spark.sql.cassandra._
     import sparkSession.implicits._
-    
+
     // @params: [JOB_NAME, KEYSPACE_NAME, TABLE_NAME, S3_URI_FULL_CHANGE, S3_URI_CURRENT_CHANGE, S3_URI_CURRENT_CHANGE, S3_URI_NEW_CHANGE]
     val args = GlueArgParser.getResolvedOptions(sysArgs, Seq("JOB_NAME", "KEYSPACE_NAME", "TABLE_NAME", "S3_URI_FULL_CHANGE", "S3_URI_CURRENT_CHANGE", "S3_URI_NEW_CHANGE").toArray)
     Job.init(args("JOB_NAME"), glueContext, args.asJava)
@@ -66,26 +66,26 @@ object GlueApp {
 
     val dfSourceAsIs = spark.cassandraTable(keyspaceName, tableName)
                             .select("userid","level","gameid","description","nickname","zip","email","updatetime", WriteTime("email") as "writeTime")
-    
+
     // Cast to Spark datatypes, for example, all UDTs to String
-    val dfSourceWithCastDataTypes = dfSourceAsIs.keyBy(row => (row.getString("userid"), 
-                                                               row.getString("level"), 
-                                                               row.getInt("gameid"), 
-                                                               row.getString("description"), 
-                                                               row.getString("nickname"), 
-                                                               row.getString("zip"), 
-                                                               row.getString("email"), 
-                                                               row.getString("updatetime"), 
+    val dfSourceWithCastDataTypes = dfSourceAsIs.keyBy(row => (row.getString("userid"),
+                                                               row.getString("level"),
+                                                               row.getInt("gameid"),
+                                                               row.getString("description"),
+                                                               row.getString("nickname"),
+                                                               row.getString("zip"),
+                                                               row.getString("email"),
+                                                               row.getString("updatetime"),
                                                                row.getStringOption("writeTime")))
                                                 .map(x => x._1)
                                                 .toDF("userid","level","gameid","description","nickname","zip","email","updatetime","writeTime")
-    
+
     // Persist full dataset in parquet format to S3
     dfSourceWithCastDataTypes.drop("writeTime")
                              .write
                              .mode(SaveMode.Overwrite)
                              .parquet(fullDataset)
-    
+
     // Persist primarykeys and column writetimes to S3
     if(checkS3(incrementalCurrentDataset) && checkS3(incrementalNewDataset))
     {
@@ -102,32 +102,32 @@ object GlueApp {
         dfSourceWithCastDataTypes.select("userid","level","gameid","writeTime")
                                  .write.mode(SaveMode.Overwrite).parquet(incrementalNewDataset)
     }
-          
+
     Job.commit()
   }
 }
 ```
 
 ### Import the incremental workload to Amazon Keyspaces
-The following example reads the incremental parquet files from S3. 
+The following example reads the incremental parquet files from S3.
 The script takes four parameters KEYSPACE_NAME, KEYSPACE_TABLE, S3_URI_CURRENT_CHANGE, S3_URI_CURRENT_CHANGE, and S3_URI_NEW_CHANGE.
 
 ```scala
 object S3ToKeyspaces {
-  
+
   def main(sysArgs: Array[String]) {
-      
+
     val spark: SparkContext = new SparkContext()
     val glueContext: GlueContext = new GlueContext(spark)
     val sparkSession: SparkSession = glueContext.getSparkSession
     import com.datastax.spark.connector._
     import org.apache.spark.sql.cassandra._
     import sparkSession.implicits._
-    
+
     // @params: [JOB_NAME, KEYSPACE_NAME, TABLE_NAME, S3_URI_FULL_CHANGE, S3_URI_CURRENT_CHANGE, S3_URI_CURRENT_CHANGE, S3_URI_NEW_CHANGE]
     val args = GlueArgParser.getResolvedOptions(sysArgs, Seq("JOB_NAME", "KEYSPACE_NAME", "TABLE_NAME", "S3_URI_FULL_CHANGE", "S3_URI_CURRENT_CHANGE", "S3_URI_NEW_CHANGE").toArray)
     Job.init(args("JOB_NAME"), glueContext, args.asJava)
-    
+
     def checkS3(path:String):Boolean = {
       FileSystem.get(URI.create(path), spark.hadoopConfiguration).exists(new Path(path))
     }
@@ -138,45 +138,45 @@ object S3ToKeyspaces {
     val incrementalCurrentDataset = args("S3_URI_CURRENT_CHANGE")
     val incrementalNewDataset = args("S3_URI_NEW_CHANGE")
     val fullDf = sparkSession.read.parquet(fullDataset)
-    
+
     if(checkS3(incrementalCurrentDataset) && !checkS3(incrementalNewDataset))
     {
         fullDf.write.format("org.apache.spark.sql.cassandra").mode("append").option("keyspace", keyspaceName).option("table", tableName).save()
-        
+
     }
-    
+
     if(checkS3(incrementalCurrentDataset) && checkS3(incrementalNewDataset))
     {
         val shortDataframeT1 = sparkSession.read.parquet(incrementalNewDataset)
         val shortDataframeT0 = sparkSession.read.parquet(incrementalCurrentDataset)
-        
-        val inserts = shortDataframeT1.as("T1").join(shortDataframeT0.as("T0"), 
-                                                $"T1.userid" === $"T0.userid" && 
-                                                $"T1.level" === $"T0.level" && 
+
+        val inserts = shortDataframeT1.as("T1").join(shortDataframeT0.as("T0"),
+                                                $"T1.userid" === $"T0.userid" &&
+                                                $"T1.level" === $"T0.level" &&
                                                 $"T1.gameid" === $"T0.gameid", "leftanti")
-        val finalInserts = inserts.as("INSERTED").join(fullDf.as("ORIGINAL"), 
-                                                $"INSERTED.userid" === $"ORIGINAL.userid"  && 
-                                                $"INSERTED.level" === $"ORIGINAL.level" && 
+        val finalInserts = inserts.as("INSERTED").join(fullDf.as("ORIGINAL"),
+                                                $"INSERTED.userid" === $"ORIGINAL.userid"  &&
+                                                $"INSERTED.level" === $"ORIGINAL.level" &&
                                                 $"INSERTED.gameid" === $"ORIGINAL.gameid" , "inner").selectExpr("ORIGINAL.*").drop("writeTime")
         finalInserts.write.format("org.apache.spark.sql.cassandra").mode("append").option("keyspace", keyspaceName).option("table", tableName).save()
-        
-        val updates = shortDataframeT0.as("T0").join(shortDataframeT1.as("T1"), 
-                                                $"T1.userid" === $"T0.userid" && 
-                                                $"T1.level" === $"T0.level" && 
+
+        val updates = shortDataframeT0.as("T0").join(shortDataframeT1.as("T1"),
+                                                $"T1.userid" === $"T0.userid" &&
+                                                $"T1.level" === $"T0.level" &&
                                                 $"T1.gameid" === $"T0.gameid", "inner")
                                                .filter($"T1.writeTime">$"T0.writetime").select($"T1.userid",$"T1.name",$"T1.endpointid", $"T1.writeTime")
-        val finalUpdates = updates.as("UPDATED").join(fullDf.as("ORIGINAL"), 
-                                                $"UPDATED.userid" === $"ORIGINAL.userid" && 
-                                                $"UPDATED.level" === $"ORIGINAL.level" && 
+        val finalUpdates = updates.as("UPDATED").join(fullDf.as("ORIGINAL"),
+                                                $"UPDATED.userid" === $"ORIGINAL.userid" &&
+                                                $"UPDATED.level" === $"ORIGINAL.level" &&
                                                 $"UPDATED.gameid" === $"ORIGINAL.gameid", "inner").selectExpr("ORIGINAL.*").drop("writeTime")
         finalUpdates.write.format("org.apache.spark.sql.cassandra").mode("append").option("keyspace", keyspaceName).option("table", tableName).save()
-        
-        val finalDeletes = shortDataframeT0.as("T0").join(shortDataframeT1.as("T1"), 
-                                                     $"T1.userid" === $"T0.userid" && 
-                                                     $"T1.level" === $"T0.level" && 
+
+        val finalDeletes = shortDataframeT0.as("T0").join(shortDataframeT1.as("T1"),
+                                                     $"T1.userid" === $"T0.userid" &&
+                                                     $"T1.level" === $"T0.level" &&
                                                      $"T1.gameid" === $"T0.gameid", "leftanti").drop("writeTime")
 
-        finalDeletes.rdd.foreach(d=> 
+        finalDeletes.rdd.foreach(d=>
         {
             val userid = d.get(0).toString
             val level = d.get(1).toString
@@ -192,9 +192,9 @@ object S3ToKeyspaces {
 ```
 ## Create a network connection for AWS Glue
 Create a new Glue connection to connect to the Cassandra cluster.
- 
+
 ```shell script
-aws glue create-connection --connection-input '{ 
+aws glue create-connection --connection-input '{
          "Name":"conn-cassandra-custom",
          "Description":"Connection to Cassandra cluster",
          "ConnectionType":"NETWORK",
@@ -228,7 +228,7 @@ datastax-java-driver {
 
 ## Cassandra driver configuration to connect to Amazon Keyspaces
 The following configuration for connecting to Amazon Keyspaces with the spark-cassandra connector.
-Using the RateLimitingRequestThrottler we can ensure that request do not exceed configured Keyspaces capacity. The G1.X DPU creates one executor per worker. The RateLimitingRequestThrottler in this example is set for 1000 request per second. 
+Using the RateLimitingRequestThrottler we can ensure that request do not exceed configured Keyspaces capacity. The G1.X DPU creates one executor per worker. The RateLimitingRequestThrottler in this example is set for 1000 request per second.
 With this configuration and G.1X DPU you will achieve 1000 request per Glue worker. Adjust the max-requests-per-second accordingly to fit your workload. Increase the number of workers to scale throughput to a table.
 
 ```yaml
@@ -284,7 +284,7 @@ aws s3api put-object --bucket $MIGRATION_BUCKET --key scripts/S3toKeyspaces.scal
 ## Create IAM ROLE for AWS Glue
 Create a new AWS service role named 'GlueKeyspacesMigration' with AWS Glue as a trusted entity.
 
-Included is a sample permissions-policy for executing Glue job. Read access to S3 bucket containing spack-cassandra-connector jar, configuration files for Amazon Keyspaces and the Cassandra. 
+Included is a sample permissions-policy for executing Glue job. Read access to S3 bucket containing spack-cassandra-connector jar, configuration files for Amazon Keyspaces and the Cassandra.
 Read and write access to S3 bucket containing intermediate data.
 ```shell script
 sed 's/amazon-keyspaces-migration-bucket/'$MIGRATION_BUCKET'/g' permissions-policy-template.json > permissions-policy.json
