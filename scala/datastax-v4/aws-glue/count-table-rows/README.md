@@ -1,17 +1,19 @@
-## Using Glue Export Example
-This example provides scala script for exporting Amazon Keyspaces table data to S3 using AWS Glue. This allows you to export data from Amazon Keyspaces without setting up a spark cluster.
+## Using Glue Count Example
+This example provides scala script for counting the number of rows in a Amazon Keyspaces table using AWS Glue. This is common utility in verifying data in tables during migration or after bulk import.
 
 ## Prerequisites
-* Amazon Keyspaces table to export
-* Amazon S3 bucket to store backups
+* Amazon Keyspaces table to count
+* Amazon S3 bucket to store required jars
 * Amazon S3 bucket to store job configuration and script
+* Amazon S3 bucket to store glue shuffle data
 
-### Export to S3
-The following example exports data to S3 using the spark-cassandra-connector. The script takes four parameters KEYSPACE_NAME, KEYSPACE_TABLE, S3_URI for backup files and FORMAT option (parquet, csv, json).  
+### Counting the number of rows in Amazon Keyspaces
+The following example uses the spark-cassandra-connector. The script takes three parameters KEYSPACE_NAME, KEYSPACE_TABLE, and DRIVER_CONF. DRIVER_CONF is the java driver external application.conf where all connection information is maintained.  
 
 
 ```
 import com.amazonaws.services.glue.GlueContext
+import com.amazonaws.services.glue.log.GlueLogger
 import com.amazonaws.services.glue.util.GlueArgParser
 import com.amazonaws.services.glue.util.Job
 import org.apache.spark.SparkContext
@@ -27,16 +29,18 @@ import com.datastax.spark.connector._
 import org.apache.spark.sql.cassandra._
 import org.apache.spark.sql.SaveMode._
 
-
-
 object GlueApp {
 
   def main(sysArgs: Array[String]) {
 
+    val args = GlueArgParser.getResolvedOptions(sysArgs, Seq("JOB_NAME", "KEYSPACE_NAME", "TABLE_NAME", "DRIVER_CONF").toArray)
+
+    val driverConfFileName = args("DRIVER_CONF")
+
     val conf = new SparkConf()
         .setAll(
          Seq(
-            ("spark.cassandra.connection.config.profile.path",  "cassandra-application.conf"),
+            ("spark.cassandra.connection.config.profile.path",  driverConfFileName),
             ("spark.cassandra.query.retry.count", "100"),
 
             ("spark.cassandra.sql.inClauseToJoinConversionThreshold", "0"),
@@ -57,20 +61,21 @@ object GlueApp {
     import org.apache.spark.sql.cassandra._
     import sparkSession.implicits._
 
-    val args = GlueArgParser.getResolvedOptions(sysArgs, Seq("JOB_NAME", "KEYSPACE_NAME", "TABLE_NAME", "S3_URI", "FORMAT").toArray)
     Job.init(args("JOB_NAME"), glueContext, args.asJava)
 
     val tableName = args("TABLE_NAME")
     val keyspaceName = args("KEYSPACE_NAME")
-    val backupS3 = args("S3_URI")
-    val backupFormat = args("FORMAT")
 
     val tableDf = sparkSession.read
       .format("org.apache.spark.sql.cassandra")
       .options(Map( "table" -> tableName, "keyspace" -> keyspaceName))
       .load()
 
-    tableDf.write.format(backupFormat).mode(SaveMode.ErrorIfExists).save(backupS3)
+    val total =  tableDf.toJavaRDD.count()
+
+    val logger = new GlueLogger
+
+    logger.info("Total number of rows in table:" + total)
 
     Job.commit()
   }
@@ -80,9 +85,9 @@ object GlueApp {
 
 
 ## Create IAM ROLE for AWS Glue
-Create a new AWS service role named 'GlueKeyspacesExport' with AWS Glue as a trusted entity.
+Create a new AWS service role named 'GlueKeyspacesRole' with AWS Glue as a trusted entity.
 
-Included is a sample permissions-policy for executing Glue job. You can use managed policies AWSGlueServiceRole, AmazonKeyspacesReadOnlyAccess, read access to S3 bucket containing spack-cassandra-connector jar, configuration. Write access to S3 bucket containing backups.
+Included is a sample permissions-policy for executing Glue job. You can use managed policies AWSGlueServiceRole, AmazonKeyspacesReadOnlyAccess, read access to S3 bucket containing spack-cassandra-connector jar and configuration.
 
 
 ## Cassandra driver configuration to connect to Amazon Keyspaces
@@ -128,32 +133,24 @@ datastax-java-driver {
 ```
 
 ## Create S3 bucket to store job artifacts
-The AWS Glue ETL job will need to access jar dependencies, driver configuration, and scala script.
+The AWS Glue ETL job will need to access jar dependencies, driver configuration, and scala script.  You can use the same bucket to store backups.
 ```
 aws s3 mb s3://amazon-keyspaces-artifacts
 ```
 
-## Create S3 bucket to store job artifacts
-The AWS Glue ETL job will use an s3 bucket to backup keyspaces table data.
-```
-aws s3 mb s3://amazon-keyspaces-backups
-```
-
-
-## Create S3 bucket for Shuffle space
+## Create S3 bucket for shuffle space
 With NoSQL its common to shuffle large sets of data. This can overflow local disk.  With AWS Glue, you can  use Amazon S3 to store Spark shuffle and spill data. This solution disaggregates compute and storage for your Spark jobs, and gives complete elasticity and low-cost shuffle storage, allowing you to run your most shuffle-intensive workloads reliably.
 
 ```
 aws s3 mb s3://amazon-keyspaces-glue-shuffle
 ```
 
-
-
 ## Upload job artifacts to S3
 The job will require
-* The spark-cassandra-connector to allow reads from Amazon Keyspaces. Amazon Keyspaces recommends version 2.5.2 of the spark-cassandra-connector or above.
-* application.conf containing the cassandra driver configuration for Keyspaces access
-* export-sample.scala script containing the export code.
+* The spark-cassandra-connector to allow reads from Amazon Keyspaces. Amazon Keyspaces recommends version 2.5.2 or above of the spark-cassandra-connector.
+* creation of S3 buckets
+* cassandra-application.conf containing the cassandra driver configuration for Keyspaces access
+* count-example.scala script containing the count code.
 
 ```
 curl -L -O https://repo1.maven.org/maven2/com/datastax/spark/spark-cassandra-connector-assembly_2.11/2.5.2/spark-cassandra-connector-assembly_2.11-2.5.2.jar
@@ -162,29 +159,27 @@ aws s3api put-object --bucket amazon-keyspaces-artifacts --key jars/spark-cassan
 
 aws s3api put-object --bucket amazon-keyspaces-artifacts --key conf/cassandra-application.conf --body cassandra-application.conf
 
-aws s3api put-object --bucket amazon-keyspaces-artifacts --key scripts/export-sample.scala --body export-sample.scala
+aws s3api put-object --bucket amazon-keyspaces-artifacts --key scripts/count-example.scala --body count-example.scala
 
 ```
 ### Create AWS Glue ETL Job
 You can use the following command to create a glue job using the script provided in this example. You can also take the parameters and enter them into the AWS Console.
 ```
 aws glue create-job \
-    --name "AmazonKeyspacesExport" \
+    --name "AmazonKeyspacesCount" \
     --role "GlueKeyspacesRestore" \
-    --description "Export Amazon Keyspaces table to s3" \
+    --description "Count Rows in Amazon Keyspaces table" \
     --glue-version "2.0" \
     --number-of-workers 5 \
     --worker-type "G.1X" \
-    --command "Name=glueetl,ScriptLocation=s3://amazon-keyspaces-artifacts/scripts/export-sample.scala" \
+    --command "Name=glueetl,ScriptLocation=s3://amazon-keyspaces-artifacts/scripts/count-example.scala" \
     --default-arguments '{
         "--job-language":"scala",
-        "--FORMAT":"parquet",
         "--KEYSPACE_NAME":"my_keyspace",
         "--TABLE_NAME":"my_table",
-        "--S3_URI":"s3://amazon-keyspaces-backups/snap-shots/",
         "--DRIVER_CONF":"cassandra-application.conf",
         "--extra-jars":"s3://amazon-keyspaces-artifacts/jars/spark-cassandra-connector-assembly_2.11-2.5.2.jar",
-        "--extra-files":"s3://amazon-keyspaces-artifacts/conf/application.conf",
+        "--extra-files":"s3://amazon-keyspaces-artifacts/conf/cassandra-application.conf",
         "--enable-continuous-cloudwatch-log":"true",
         "--write-shuffle-files-to-s3":"true",
         "--write-shuffle-spills-to-s3":"true",
