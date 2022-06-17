@@ -2,6 +2,7 @@ import com.amazonaws.services.glue.GlueContext
 import com.amazonaws.services.glue.util.GlueArgParser
 import com.amazonaws.services.glue.util.Job
 import org.apache.spark.SparkContext
+import org.apache.spark.SparkConf
 import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SaveMode
@@ -19,7 +20,23 @@ object GlueApp {
 
   def main(sysArgs: Array[String]) {
 
-    val spark: SparkContext = new SparkContext()
+    val conf = new SparkConf()
+        .setAll(
+         Seq(
+            ("spark.cassandra.connection.config.profile.path",  "cassandra-application.conf"),
+            ("spark.cassandra.query.retry.count", "100"),
+
+            ("spark.cassandra.sql.inClauseToJoinConversionThreshold", "0"),
+            ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
+            ("spark.cassandra.concurrent.reads", "512"),
+
+            ("spark.cassandra.output.concurrent.writes", "5"),
+            ("spark.cassandra.output.batch.grouping.key", "none"),
+            ("spark.cassandra.output.batch.size.rows", "1")
+        ))
+
+
+    val spark: SparkContext = new SparkContext(conf)
     val glueContext: GlueContext = new GlueContext(spark)
     val sparkSession: SparkSession = glueContext.getSparkSession
 
