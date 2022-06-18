@@ -1,0 +1,20 @@
+{
+  "name": "query-api-server",
+  "version": "1.0.0",
+  "description": "REST API to query Keyspace DB",
+  "author": "Mike Rizzo",
+  "main": "query-api-server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "license": "MIT-0",
+  "dependencies": {
+    "commander": "^8.0.0",
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1",
+    "aws-sdk": "^2.948.0",
+    "cassandra-driver": "^4.6.3",
+    "loglevel": "^1.7.1",
+    "aws-sigv4-auth-cassandra-plugin": "^1.0.3"
+  }
+}
