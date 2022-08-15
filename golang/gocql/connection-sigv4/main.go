@@ -3,7 +3,10 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
+	"math/rand"
 	"os"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sigv4-auth-cassandra-gocql-driver-plugin/sigv4"
@@ -44,6 +47,10 @@ func main() {
 	awsAuth := sigv4.NewAwsAuthenticator()
 	cluster.Authenticator = awsAuth
 
+	//Retry Policy
+	amazonKeyspacesRetry := &AmazonKeyspacesExponentialBackoffRetryPolicy{Max: 100, Min: 10, NumRetries: 10}
+	cluster.RetryPolicy = amazonKeyspacesRetry
+
 	// Configure Connection TrustStore for TLS
 	cluster.SslOpts = &gocql.SslOptions{
 		CaPath: "certs/sf-class2-root.crt",
@@ -71,4 +78,42 @@ func main() {
 	if err := iter.Close(); err != nil {
 		log.Fatal(err)
 	}
+}
+//AmazonKeyspacesExponentialBackoffRetryPolicy will retry exponentially on the same connection
+type AmazonKeyspacesExponentialBackoffRetryPolicy struct {
+	NumRetries int
+	Min, Max   time.Duration
+}
+
+func (e *AmazonKeyspacesExponentialBackoffRetryPolicy) Attempt(q gocql.RetryableQuery) bool {
+
+	if q.Attempts() > e.NumRetries {
+		return false
+	}
+	time.Sleep(e.napTime(q.Attempts()))
+	return true
+}
+// used to calculate exponentially growing time
+func getExponentialTime(min time.Duration, max time.Duration, attempts int) time.Duration {
+	if min <= 0 {
+		min = 100 * time.Millisecond
+	}
+	if max <= 0 {
+		max = 10 * time.Second
+	}
+	minFloat := float64(min)
+	napDuration := minFloat * math.Pow(2, float64(attempts-1))
+	// add some jitter
+	napDuration += rand.Float64()*minFloat - (minFloat / 2)
+	if napDuration > float64(max) {
+		return time.Duration(max)
+	}
+	return time.Duration(napDuration)
+}
+// GetRetryType will always retry instead of RetryNextHost
+func (e *AmazonKeyspacesExponentialBackoffRetryPolicy) GetRetryType(err error) gocql.RetryType {
+	return gocql.Retry
+}
+func (e *AmazonKeyspacesExponentialBackoffRetryPolicy) napTime(attempts int) time.Duration {
+	return getExponentialTime(e.Min, e.Max, attempts)
 }
