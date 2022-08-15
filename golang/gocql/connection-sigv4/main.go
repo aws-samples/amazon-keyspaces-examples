@@ -38,11 +38,13 @@ func init() {
 func main() {
 
 	//Determine Contact Point
-	contactPoint := fmt.Sprintf("cassandra.%s.amazonaws.com:9142", awsRegion)
+	contactPoint := fmt.Sprintf("cassandra.%s.amazonaws.com", awsRegion)
 	fmt.Println("Using Contact Point ", contactPoint)
 
 	// Configure Cluster
 	cluster := gocql.NewCluster(contactPoint)
+
+	cluster.Port = 9142
 
 	awsAuth := sigv4.NewAwsAuthenticator()
 	cluster.Authenticator = awsAuth
@@ -54,12 +56,14 @@ func main() {
 	// Configure Connection TrustStore for TLS
 	cluster.SslOpts = &gocql.SslOptions{
 		CaPath: "certs/sf-class2-root.crt",
+		EnableHostVerification: false,
 	}
 
 	cluster.Consistency = gocql.LocalQuorum
-	cluster.DisableInitialHostLookup = true
+	cluster.DisableInitialHostLookup = false
 
 	cassandraSession, err := cluster.CreateSession()
+
 	if err != nil {
 		fmt.Println("Cassandra Session Creation Error - ", err)
 		os.Exit(-2)
