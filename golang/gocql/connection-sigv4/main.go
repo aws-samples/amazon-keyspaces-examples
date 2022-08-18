@@ -46,12 +46,17 @@ func main() {
 
 	cluster.Port = 9142
 
+	cluster.NumConns = 4
+
 	awsAuth := sigv4.NewAwsAuthenticator()
 	cluster.Authenticator = awsAuth
 
 	//Retry Policy
-	amazonKeyspacesRetry := &AmazonKeyspacesExponentialBackoffRetryPolicy{Max: 100, Min: 10, NumRetries: 10}
+	amazonKeyspacesRetry := &AmazonKeyspacesExponentialBackoffRetryPolicy{Max: 100 * time.Millisecond , Min: 10 * time.Millisecond, NumRetries: 20}
 	cluster.RetryPolicy = amazonKeyspacesRetry
+
+	amazonKeyspacesConnectionObserver, _ := NewAmazonKeyspacesObserver()
+	cluster.ConnectObserver = amazonKeyspacesConnectionObserver
 
 	// Configure Connection TrustStore for TLS
 	cluster.SslOpts = &gocql.SslOptions{
@@ -74,6 +79,7 @@ func main() {
 	// Perform Query
 	var keyspaceName string
 	iter := cassandraSession.Query("SELECT keyspace_name FROM system_schema.keyspaces;").Iter()
+
 	defer iter.Close()
 
 	for iter.Scan(&keyspaceName) {
@@ -83,6 +89,25 @@ func main() {
 		log.Fatal(err)
 	}
 }
+//Observer for debugging connection
+func NewAmazonKeyspacesObserver() (*AmazonKeyspacesObserver, error) {
+	s := &AmazonKeyspacesObserver{
+	}
+	return s, nil
+}
+
+type AmazonKeyspacesObserver struct {}
+
+func (e *AmazonKeyspacesObserver) ObserveConnect(q gocql.ObservedConnect) {
+
+	if q.Err != nil {
+		fmt.Printf("Error Connecting to IP:%s, Port:%d Error: %s\n", q.Host.ConnectAddress(), q.Host.Port(), q.Err)
+	} else {
+		fmt.Printf("Connected to hostid:%s, IP:%s, Port:%d, elapse:%d\n", q.Host.HostID(), q.Host.ConnectAddress(), q.Host.Port(), q.End.UnixMilli()-q.Start.UnixMilli())
+	}
+}
+
+
 //AmazonKeyspacesExponentialBackoffRetryPolicy will retry exponentially on the same connection
 type AmazonKeyspacesExponentialBackoffRetryPolicy struct {
 	NumRetries int
@@ -90,7 +115,6 @@ type AmazonKeyspacesExponentialBackoffRetryPolicy struct {
 }
 
 func (e *AmazonKeyspacesExponentialBackoffRetryPolicy) Attempt(q gocql.RetryableQuery) bool {
-
 	if q.Attempts() > e.NumRetries {
 		return false
 	}
