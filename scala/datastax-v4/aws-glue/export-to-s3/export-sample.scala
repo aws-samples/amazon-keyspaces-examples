@@ -20,11 +20,18 @@ object GlueApp {
 
   def main(sysArgs: Array[String]) {
 
+    val args = GlueArgParser.getResolvedOptions(sysArgs, Seq("JOB_NAME", "KEYSPACE_NAME", "TABLE_NAME", "DRIVER_CONF", "FORMAT", "S3_URI").toArray)
+
+    val driverConfFileName = args("DRIVER_CONF")
+
     val conf = new SparkConf()
         .setAll(
          Seq(
-            ("spark.cassandra.connection.config.profile.path",  "cassandra-application.conf"),
-            ("spark.cassandra.query.retry.count", "100"),
+            (" spark.task.maxFailures",  "10"),
+
+            ("spark.cassandra.input.consistency.level",  "LOCAL_ONE"),
+            ("spark.cassandra.connection.config.profile.path",  driverConfFileName),
+            ("spark.cassandra.query.retry.count", "1000"),
 
             ("spark.cassandra.sql.inClauseToJoinConversionThreshold", "0"),
             ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
@@ -44,7 +51,6 @@ object GlueApp {
     import org.apache.spark.sql.cassandra._
     import sparkSession.implicits._
 
-    val args = GlueArgParser.getResolvedOptions(sysArgs, Seq("JOB_NAME", "KEYSPACE_NAME", "TABLE_NAME", "S3_URI", "FORMAT").toArray)
     Job.init(args("JOB_NAME"), glueContext, args.asJava)
 
     val tableName = args("TABLE_NAME")
