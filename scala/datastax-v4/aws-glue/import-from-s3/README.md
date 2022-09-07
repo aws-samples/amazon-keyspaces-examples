@@ -40,8 +40,9 @@ object GlueApp {
   val conf = new SparkConf()
       .setAll(
        Seq(
-           (" spark.task.maxFailures",  "10"),
+           ("spark.task.maxFailures",  "10"),
 
+          ("spark.cassandra.output.consistency.level",  "LOCAL_QUORUM"),
           ("spark.cassandra.connection.config.profile.path",  driverConfFileName),
           ("spark.cassandra.query.retry.count", "1000"),
 
@@ -67,19 +68,29 @@ object GlueApp {
     val tableName = args("TABLE_NAME")
     val keyspaceName = args("KEYSPACE_NAME")
     val backupFormat = args("FORMAT")
-    val fullDataset = args("S3_URI")
 
-    val fullDf = sparkSession.read.parquet(fullDataset)
+   val s3bucketBackupsLocation = args("S3_URI")
 
-    fullDf.write.format("org.apache.spark.sql.cassandra").mode("append").option("keyspace", keyspaceName).option("table", tableName).save()
+   val orderedData = sparkSession.read.format(backupFormat).load(s3bucketBackupsLocation)
+
+   //You want randomize data before loading to maximize table throughput and avoid WriteThottleEvents
+   //Data exported from another database or Cassandra may be ordered by primary key.
+   //With Amazon Keyspaces you want to load data in a random way to use all available resources.
+   //The following command will randomize the data.
+   val shuffledData = orderedData.orderBy(rand())
+
+   shuffledData.write.format("org.apache.spark.sql.cassandra").mode("append").option("keyspace", keyspaceName).option("table", tableName).save()
 
     Job.commit()
   }
 }
 
-
 ```
-
+## Update the partitioner for your account
+In Apache Cassandra, partitioners control which nodes data is stored on in the cluster. Partitioners create a numeric token using a hashed value of the partition key. Cassandra uses this token to distribute data across nodes.  To use Apache Spark or AWS glue you will need to update the partitioner. You can execute this CQL command from the Amazon Keyspaces console [CQL editor](https://console.aws.amazon.com/keyspaces/home#cql-editor)
+```
+UPDATE system.local set partitioner='org.apache.cassandra.dht.RandomPartitioner' where key='local';
+```
 
 ## Create IAM ROLE for AWS Glue
 Create a new AWS service role named 'GlueKeyspacesImport' with AWS Glue as a trusted entity.
