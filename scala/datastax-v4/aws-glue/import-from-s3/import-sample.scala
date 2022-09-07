@@ -37,7 +37,7 @@ object GlueApp {
           ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
           ("spark.cassandra.concurrent.reads", "512"),
 
-          ("spark.cassandra.output.concurrent.writes", "8"),
+          ("spark.cassandra.output.concurrent.writes", "15"),
           ("spark.cassandra.output.batch.grouping.key", "none"),
           ("spark.cassandra.output.batch.size.rows", "1")
       ))
@@ -63,6 +63,7 @@ object GlueApp {
    //You want randomize data before loading to maximize table throughput and avoid WriteThottleEvents
    //Data exported from another database or Cassandra may be ordered by primary key.
    //With Amazon Keyspaces you want to load data in a random way to use all available resources.
+   //The following command will randomize the data.
    val shuffledData = orderedData.orderBy(rand())
 
    shuffledData.write.format("org.apache.spark.sql.cassandra").mode("append").option("keyspace", keyspaceName).option("table", tableName).save()

@@ -26,14 +26,15 @@ object GlueApp {
     val conf = new SparkConf()
         .setAll(
          Seq(
+            ("spark.task.maxFailures",  "10"),
             ("spark.cassandra.connection.config.profile.path",  driverConfFileName),
-            ("spark.cassandra.query.retry.count", "100"),
+            ("spark.cassandra.query.retry.count", "1000"),
 
             ("spark.cassandra.sql.inClauseToJoinConversionThreshold", "0"),
             ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
             ("spark.cassandra.concurrent.reads", "512"),
 
-            ("spark.cassandra.output.concurrent.writes", "5"),
+            ("spark.cassandra.output.concurrent.writes", "15"),
             ("spark.cassandra.output.batch.grouping.key", "none"),
             ("spark.cassandra.output.batch.size.rows", "1")
         ))
