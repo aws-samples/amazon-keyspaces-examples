@@ -55,11 +55,17 @@ object GlueApp {
     val tableName = args("TABLE_NAME")
     val keyspaceName = args("KEYSPACE_NAME")
     val backupFormat = args("FORMAT")
-    val fullDataset = args("S3_URI")
 
-    val fullDf = sparkSession.read.parquet(fullDataset)
+   val s3bucketBackupsLocation = args("S3_URI")
 
-    fullDf.write.format("org.apache.spark.sql.cassandra").mode("append").option("keyspace", keyspaceName).option("table", tableName).save()
+   val orderedData = sparkSession.read.format(backupFormat).load(s3bucketBackupsLocation)
+
+   //You want randomize data before loading to maximize table throughput and avoid WriteThottleEvents
+   //Data exported from another database or Cassandra may be ordered by primary key.
+   //With Amazon Keyspaces you want to load data in a random way to use all available resources.
+   val shuffledData = orderedData.orderBy(rand())
+
+   shuffledData.write.format("org.apache.spark.sql.cassandra").mode("append").option("keyspace", keyspaceName).option("table", tableName).save()
 
     Job.commit()
   }
