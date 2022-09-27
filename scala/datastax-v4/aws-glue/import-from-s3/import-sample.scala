@@ -13,6 +13,7 @@ import scala.collection.JavaConverters._
 import com.datastax.spark.connector._
 import org.apache.spark.sql.cassandra._
 import org.apache.spark.sql.SaveMode._
+import org.apache.spark.sql.functions.rand
 
 
 
