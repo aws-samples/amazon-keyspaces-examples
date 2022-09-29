@@ -14,6 +14,12 @@ import scala.collection.JavaConverters._
 import com.datastax.spark.connector._
 import org.apache.spark.sql.cassandra._
 import org.apache.spark.sql.SaveMode._
+import com.datastax.spark.connector._
+import org.apache.spark.sql.cassandra._
+import com.datastax.spark.connector.cql._
+import com.datastax.oss.driver.api.core._
+    
+    
 
 object GlueApp {
 
@@ -40,19 +46,38 @@ object GlueApp {
         ))
 
 
+    
     val spark: SparkContext = new SparkContext(conf)
     val glueContext: GlueContext = new GlueContext(spark)
     val sparkSession: SparkSession = glueContext.getSparkSession
-
-    import com.datastax.spark.connector._
-    import org.apache.spark.sql.cassandra._
+    
     import sparkSession.implicits._
-
+    
     Job.init(args("JOB_NAME"), glueContext, args.asJava)
-
+    
+    val logger = new GlueLogger
+    
+    //validation steps for peers and partitioner 
+    val connector = CassandraConnector.apply(conf);
+    val session = connector.openSession();
+    val peersCount = session.execute("SELECT * FROM system.peers").all().size()
+    
+    val partitioner = session.execute("SELECT partitioner from system.local").one().getString("partitioner")
+    
+    logger.info("Total number of seeds:" + peersCount);
+    logger.info("Configured partitioner:" + partitioner);
+    
+    if(peersCount == 0){
+       throw new Exception("No system peers found. Check required permissions to read from the system.peers table. If using VPCE check permissions for describing VPCE endpoints. https://docs.aws.amazon.com/keyspaces/latest/devguide/vpc-endpoints.html")
+    }
+    
+    if(partitioner.equals("com.amazonaws.cassandra.DefaultPartitioner")){
+        throw new Exception("Sark requires the use of RandomPartitioner or Murmur3Partitioner. See Working with partioners in Amazon Keyspaces documentation. https://docs.aws.amazon.com/keyspaces/latest/devguide/working-with-partitioners.html")
+    }
+    
+    //count rows
     val tableName = args("TABLE_NAME")
     val keyspaceName = args("KEYSPACE_NAME")
-
 
     val tableDf = sparkSession.read
       .format("org.apache.spark.sql.cassandra")
@@ -60,8 +85,6 @@ object GlueApp {
       .load()
 
     val total =  tableDf.toJavaRDD.count()
-
-    val logger = new GlueLogger
 
     logger.info("Total number of rows in table:" + total)
 
