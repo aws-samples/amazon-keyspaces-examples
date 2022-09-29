@@ -13,7 +13,11 @@ import scala.collection.JavaConverters._
 import com.datastax.spark.connector._
 import org.apache.spark.sql.cassandra._
 import org.apache.spark.sql.SaveMode._
-
+import com.datastax.spark.connector._
+import com.datastax.spark.connector.cql._
+import com.datastax.oss.driver.api.core._
+import org.apache.spark.sql.functions.rand
+import com.amazonaws.services.glue.log.GlueLogger
 
 
 object GlueApp {
@@ -27,12 +31,12 @@ object GlueApp {
     val conf = new SparkConf()
         .setAll(
          Seq(
-            (" spark.task.maxFailures",  "10"),
-
-            ("spark.cassandra.input.consistency.level",  "LOCAL_ONE"),
+             ("spark.task.maxFailures",  "10"),
+          
             ("spark.cassandra.connection.config.profile.path",  driverConfFileName),
             ("spark.cassandra.query.retry.count", "1000"),
 
+            ("spark.cassandra.input.consistency.level",  "LOCAL_ONE"),
             ("spark.cassandra.sql.inClauseToJoinConversionThreshold", "0"),
             ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
             ("spark.cassandra.concurrent.reads", "512"),
@@ -47,12 +51,30 @@ object GlueApp {
     val glueContext: GlueContext = new GlueContext(spark)
     val sparkSession: SparkSession = glueContext.getSparkSession
 
-    import com.datastax.spark.connector._
-    import org.apache.spark.sql.cassandra._
     import sparkSession.implicits._
 
     Job.init(args("JOB_NAME"), glueContext, args.asJava)
 
+    val logger = new GlueLogger
+    
+    //validation steps for peers and partitioner 
+    val connector = CassandraConnector.apply(conf);
+    val session = connector.openSession();
+    val peersCount = session.execute("SELECT * FROM system.peers").all().size()
+    
+    val partitioner = session.execute("SELECT partitioner from system.local").one().getString("partitioner")
+    
+    logger.info("Total number of seeds:" + peersCount);
+    logger.info("Configured partitioner:" + partitioner);
+    
+    if(peersCount == 0){
+       throw new Exception("No system peers found. Check required permissions to read from the system.peers table. If using VPCE check permissions for describing VPCE endpoints. https://docs.aws.amazon.com/keyspaces/latest/devguide/vpc-endpoints.html")
+    }
+    
+    if(partitioner.equals("com.amazonaws.cassandra.DefaultPartitioner")){
+        throw new Exception("Sark requires the use of RandomPartitioner or Murmur3Partitioner. See Working with partioners in Amazon Keyspaces documentation. https://docs.aws.amazon.com/keyspaces/latest/devguide/working-with-partitioners.html")
+    }
+    
     val tableName = args("TABLE_NAME")
     val keyspaceName = args("KEYSPACE_NAME")
     val backupS3 = args("S3_URI")
