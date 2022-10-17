@@ -92,17 +92,17 @@ To see which partitioner is configured for the account, you can use the followin
 
 If the partitioner hasn't been changed, the query has the following output.
 
+```
 partitioner
 --------------------------------------------
 com.amazonaws.cassandra.DefaultPartitioner
+```
 
 To update the partitioner to the RandomPartitioner, you can use the following query.
 
 ```UPDATE system.local set partitioner='org.apache.cassandra.dht.RandomPartitioner' where key='local';```
 
 For more info see [Working with partitioners](https://docs.aws.amazon.com/keyspaces/latest/devguide/working-with-partitioners.html)
-
-SELECT partitioner from system.local;
 
 ## Create IAM ROLE for AWS Glue
 Create a new AWS service role named 'GlueKeyspacesExport' with AWS Glue as a trusted entity.
