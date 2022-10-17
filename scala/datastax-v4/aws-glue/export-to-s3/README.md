@@ -86,6 +86,24 @@ object GlueApp {
 ## Update the partitioner for your account
 In Apache Cassandra, partitioners control which nodes data is stored on in the cluster. Partitioners create a numeric token using a hashed value of the partition key. Cassandra uses this token to distribute data across nodes.  To use Apache Spark or AWS glue you will need to update the partitioner. You can execute this CQL command from the Amazon Keyspaces console [CQL editor](https://console.aws.amazon.com/keyspaces/home#cql-editor) 
 
+To see which partitioner is configured for the account, you can use the following query.
+
+```SELECT partitioner from system.local;```
+
+If the partitioner hasn't been changed, the query has the following output.
+
+partitioner
+--------------------------------------------
+com.amazonaws.cassandra.DefaultPartitioner
+
+To update the partitioner to the RandomPartitioner, you can use the following query.
+
+```UPDATE system.local set partitioner='org.apache.cassandra.dht.RandomPartitioner' where key='local';```
+
+For more info see [Working with partitioners](https://docs.aws.amazon.com/keyspaces/latest/devguide/working-with-partitioners.html)
+
+SELECT partitioner from system.local;
+
 ## Create IAM ROLE for AWS Glue
 Create a new AWS service role named 'GlueKeyspacesExport' with AWS Glue as a trusted entity.
 
