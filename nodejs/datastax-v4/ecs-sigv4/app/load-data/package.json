@@ -1,0 +1,18 @@
+{
+  "name": "load-data",
+  "version": "1.0.0",
+  "description": "Load demo data into Keyspace table",
+  "author": "Mike Rizzo",
+  "main": "load-data.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "license": "MIT-0",
+  "dependencies": {
+    "commander": "^8.0.0",
+    "aws-sdk": "^2.948.0",
+    "cassandra-driver": "^4.6.3",
+    "loglevel": "^1.7.1",
+    "aws-sigv4-auth-cassandra-plugin": "^1.0.3"
+  }
+}

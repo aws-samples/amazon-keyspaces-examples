@@ -28,11 +28,14 @@ public class AmazonKeyspacesRetryPolicy implements RetryPolicy {
     }
 
     protected RetryDecision makeDecisionBasedOnNumberOfConfiguredRetries(int nbRetry, ConsistencyLevel cl){
-        if(nbRetry > maxNumberOfRetries){
+         if(nbRetry < maxNumberOfRetries){
+            
+            return RetryDecision.retry(cl);
+
+        }else{
+             
             return RetryDecision.rethrow();
         }
-
-        return RetryDecision.retry(cl);
     }
 
     public RetryDecision onReadTimeout(Statement statement, ConsistencyLevel cl, int requiredResponses, int receivedResponses, boolean dataRetrieved, int nbRetry) {
