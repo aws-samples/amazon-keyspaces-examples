@@ -1,3 +1,7 @@
+/*
+ * // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * // SPDX-License-Identifier: MIT-0
+ */
 /**
  * The default implementation triggers a retry on the next host in the query plan with the same consistency level, for historical reasons.
  * 
@@ -82,10 +86,9 @@ AmazonKeyspacesExponentialRetryPolicy.prototype.onUnavailable = function (info, 
 * @param {OperationInfo} info
 * @param {Number} consistency The [consistency]{@link module:types~consistencies} level of the query that triggered
 * the exception.
-* @param {Number} received The number of nodes having answered the request.
-* @param {Number} blockFor The number of replicas whose response is required to achieve the
+* @param {Number} blockFor The number of responses required to achieve the
 * required [consistency]{@link module:types~consistencies}.
-* @param {Boolean} isDataPresent When <code>false</code>, it means the replica that was asked for data has not responded.
+* @param {Boolean} isDataPresent When <code>false</code>, it means the data has not responded.
 * @returns {DecisionInfo}
 */
 AmazonKeyspacesExponentialRetryPolicy.prototype.onReadTimeout = function (info, consistency, received, blockFor, isDataPresent) {
@@ -101,8 +104,7 @@ AmazonKeyspacesExponentialRetryPolicy.prototype.onReadTimeout = function (info, 
 * @param {OperationInfo} info
 * @param {Number} consistency The [consistency]{@link module:types~consistencies} level of the query that triggered
 * the exception.
-* @param {Number} received The number of nodes having acknowledged the request.
-* @param {Number} blockFor The number of replicas whose acknowledgement is required to achieve the required
+* @param {Number} blockFor The number of acknowledgements required to achieve the required
 * [consistency]{@link module:types~consistencies}.
 * @param {String} writeType A <code>string</code> that describes the type of the write that timed out ("SIMPLE"
 * / "BATCH" / "BATCH_LOG" / "UNLOGGED_BATCH" / "COUNTER").
