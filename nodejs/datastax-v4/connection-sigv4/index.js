@@ -6,7 +6,7 @@ const cassandra = require('cassandra-driver');
 const fs = require('fs');
 const sigV4 = require('aws-sigv4-auth-cassandra-plugin');
 // custom retry policy for AmazonKeyspaces to retry on same host
-const custom_retry = require('./AmazonKeyspacesRetryPolicy.js');
+const custom_retry = require('./retry/AmazonKeyspacesRetryPolicy.js');
 // Max number of retry attempts for custom retry
 const Max_retry_attempts = 10
 require('dotenv').config();
@@ -57,8 +57,10 @@ const client = new cassandra.Client({
 
 const query = 'SELECT * FROM system_schema.keyspaces';
 
-client.execute(query).then(
+const result = client.execute(query).then(
     result => console.log('Row from Keyspaces %s', result.rows[0])
 ).catch(
     e => console.log(`${e}`)
 );
+
+Promise.allSettled([result]).finally(() => client.shutdown());

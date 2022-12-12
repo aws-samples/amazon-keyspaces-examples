@@ -1,11 +1,11 @@
 /**
  * The default implementation triggers a retry on the next host in the query plan with the same consistency level, for historical reasons.
  * 
- * This is a conservative retry policy adapted for the Amazon Keyspaces Service.
- * It allows for a configurable number of attempts, but by default the number of attempts is {@value max_retry_count#default_retry_count}
+ * This is a Exponential retry policy adapted for the Amazon Keyspaces Service.
+ * It allows for a configurable number of retry attempts, with each retry it will introduce an incremantal delay of 500ms, by default the number of attempts is {@value max_retry_count#default_retry_count}
  * <p>
  * This policy will either reattempt request on the same host or rethrow the exception to the calling thread. The main difference between
- * this policy from the original {@link cassandra.policies.retry.RetryPolicy} is that the {@link AmazonKeyspacesRetryPolicy} will call {@link useCurrentHost} 
+ * this policy from the original {@link cassandra.policies.retry.RetryPolicy} is that the {@link AmazonKeyspacesExponentialRetryPolicy} will call {@link useCurrentHost} 
  * <p>
  * In Amazon Keyspaces, it's likely that {@link WriteTimeoutException} or {@link ReadTimeoutException} is the result of exceeding current table
  * capacity. Learn more about Amazon Keyspaces capacity here: @see <a href="https://docs.aws.amazon.com/keyspaces/latest/devguide/ReadWriteCapacityMode.html">Amazon Keyspaces CapacityModes</a>.
@@ -17,7 +17,7 @@
 const client = new cassandra.Client({
                    contactPoints: ['cassandra.us-east-2.amazonaws.com'],
                    localDataCenter: 'us-east-2',
-                   policies: { retry: new retry.AmazonKeyspacesRetryPolicy(Max_retry_attempts) },
+                   policies: { retry: new retry.AmazonKeyspacesExponentialRetryPolicy(Max_retry_attempts) },
                    pooling: { coreConnectionsPerHost: { [types.distance.local]: 2 } },
                    queryOptions: { isIdempotent: true, consistency: cassandra.types.consistencies.localQuorum },
                    authProvider: auth,
@@ -28,7 +28,6 @@ const client = new cassandra.Client({
  * </pre>
  */
 
-
 'use strict';
 const util = require('util');
 const cassandra = require('cassandra-driver');
@@ -37,11 +36,11 @@ const RetryPolicy = cassandra.policies.retry.RetryPolicy
         
 /** @module policies/retry */
 /**
-* Custom AmazonKeyspacesRetryPolicy.
+* Custom AmazonKeyspacesExponentialRetryPolicy.
 * Determines what to do when the drivers runs into an specific Cassandra exception
 * @constructor
 */
-function AmazonKeyspacesRetryPolicy( max_retry_count ) {
+function AmazonKeyspacesExponentialRetryPolicy( max_retry_count ) {
     if (max_retry_count) {
                 this.retry_count = max_retry_count;
         }
@@ -50,8 +49,15 @@ function AmazonKeyspacesRetryPolicy( max_retry_count ) {
         }
 }
         
-util.inherits (AmazonKeyspacesRetryPolicy, RetryPolicy);
-        
+util.inherits (AmazonKeyspacesExponentialRetryPolicy, RetryPolicy);
+
+
+const timeToWait = ( retry_attempt ) => {
+    let ms = retry_attempt * 500
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  };
+  
+
 /**
 * Determines what to do when the driver gets an UnavailableException response
 * @param {OperationInfo} info
@@ -63,12 +69,12 @@ util.inherits (AmazonKeyspacesRetryPolicy, RetryPolicy);
 * (since an unavailable exception has been triggered, there will be alive &lt; required)
 * @returns {DecisionInfo}
 */
-AmazonKeyspacesRetryPolicy.prototype.onUnavailable = function (info, consistency, required, alive) {
-    if (info.nbRetry > this.retry_count) {
+AmazonKeyspacesExponentialRetryPolicy.prototype.onUnavailable = function (info, consistency, required, alive) {
+    if (info.nbRetry > this.retry_count - 1 ) {
                 return this.rethrowResult();
         }
-
-        return this.retryResult(consistency, true);
+    timeToWait (info.nbRetry + 1)
+    return this.retryResult(consistency, true);
 };
         
 /**
@@ -82,11 +88,12 @@ AmazonKeyspacesRetryPolicy.prototype.onUnavailable = function (info, consistency
 * @param {Boolean} isDataPresent When <code>false</code>, it means the replica that was asked for data has not responded.
 * @returns {DecisionInfo}
 */
-AmazonKeyspacesRetryPolicy.prototype.onReadTimeout = function (info, consistency, received, blockFor, isDataPresent) {
+AmazonKeyspacesExponentialRetryPolicy.prototype.onReadTimeout = function (info, consistency, received, blockFor, isDataPresent) {
     if (info.nbRetry > this.retry_count) {
         return this.rethrowResult();
     }
-        return this.retryResult(consistency, true);
+    timeToWait (info.nbRetry + 1)
+    return this.retryResult(consistency, true);
 };
         
 /**
@@ -101,10 +108,11 @@ AmazonKeyspacesRetryPolicy.prototype.onReadTimeout = function (info, consistency
 * / "BATCH" / "BATCH_LOG" / "UNLOGGED_BATCH" / "COUNTER").
 * @returns {DecisionInfo}
 */
-AmazonKeyspacesRetryPolicy.prototype.onWriteTimeout = function (info, consistency, received, blockFor, writeType) {
+AmazonKeyspacesExponentialRetryPolicy.prototype.onWriteTimeout = function (info, consistency, received, blockFor, writeType) {
     if (info.nbRetry > this.retry_count) {
         return this.rethrowResult();
     }
+    timeToWait (info.nbRetry + 1)
     return this.retryResult(consistency, true);
 };
         
@@ -117,10 +125,11 @@ AmazonKeyspacesRetryPolicy.prototype.onWriteTimeout = function (info, consistenc
 * @param {Error} err The error that caused this request to fail.
 * @returns {DecisionInfo}
 */
-AmazonKeyspacesRetryPolicy.prototype.onRequestError = function (info, consistency, err) {
+AmazonKeyspacesExponentialRetryPolicy.prototype.onRequestError = function (info, consistency, err) {
     if (info.nbRetry > this.retry_count) {
         return this.rethrowResult();
     }
+    timeToWait (info.nbRetry + 1)
     return this.retryResult(consistency, true);
 };
         
@@ -131,7 +140,7 @@ AmazonKeyspacesRetryPolicy.prototype.onRequestError = function (info, consistenc
 * Default: true.
 * @returns {DecisionInfo}
 */
-AmazonKeyspacesRetryPolicy.prototype.retryResult = function (consistency, useCurrentHost) {
+AmazonKeyspacesExponentialRetryPolicy.prototype.retryResult = function (consistency, useCurrentHost) {
     return {
             decision: RetryPolicy.retryDecision.retry,
             consistency: consistency,
@@ -143,8 +152,8 @@ AmazonKeyspacesRetryPolicy.prototype.retryResult = function (consistency, useCur
 * Returns a {@link DecisionInfo} to callback in error when a err is obtained for a given request.
 * @returns {DecisionInfo}
 */
-AmazonKeyspacesRetryPolicy.prototype.rethrowResult = function () {
-          return { decision: AmazonKeyspacesRetryPolicy.retryDecision.rethrow };
+AmazonKeyspacesExponentialRetryPolicy.prototype.rethrowResult = function () {
+          return { decision: AmazonKeyspacesExponentialRetryPolicy.retryDecision.rethrow };
 };
         
 /**
@@ -155,10 +164,10 @@ AmazonKeyspacesRetryPolicy.prototype.rethrowResult = function () {
 * @property {Number} ignore
 * @static
 */
-AmazonKeyspacesRetryPolicy.retryDecision = {
+AmazonKeyspacesExponentialRetryPolicy.retryDecision = {
     rethrow:  0,
     retry:    1,
     ignore:   2
 };
         
-exports.AmazonKeyspacesRetryPolicy = AmazonKeyspacesRetryPolicy;
+exports.AmazonKeyspacesExponentialRetryPolicy = AmazonKeyspacesExponentialRetryPolicy;
