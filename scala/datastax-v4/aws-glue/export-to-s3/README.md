@@ -10,79 +10,6 @@ This example provides scala script for exporting Amazon Keyspaces table data to 
 The following example exports data to S3 using the spark-cassandra-connector. The script takes four parameters KEYSPACE_NAME, KEYSPACE_TABLE, S3_URI for backup files and FORMAT option (parquet, csv, json).  
 
 
-```
-import com.amazonaws.services.glue.GlueContext
-import com.amazonaws.services.glue.util.GlueArgParser
-import com.amazonaws.services.glue.util.Job
-import org.apache.spark.SparkContext
-import org.apache.spark.SparkConf
-import org.apache.spark.sql.Dataset
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.SaveMode
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.from_json
-import org.apache.spark.sql.streaming.Trigger
-import scala.collection.JavaConverters._
-import com.datastax.spark.connector._
-import org.apache.spark.sql.cassandra._
-import org.apache.spark.sql.SaveMode._
-
-
-
-object GlueApp {
-
-  def main(sysArgs: Array[String]) {
-
-    val args = GlueArgParser.getResolvedOptions(sysArgs, Seq("JOB_NAME", "KEYSPACE_NAME", "TABLE_NAME", "DRIVER_CONF", "FORMAT", "S3_URI").toArray)
-
-    val driverConfFileName = args("DRIVER_CONF")
-
-    val conf = new SparkConf()
-        .setAll(
-         Seq(
-            (" spark.task.maxFailures",  "10"),
-
-            ("spark.cassandra.connection.config.profile.path",  driverConfFileName),
-            ("spark.cassandra.query.retry.count", "1000"),
-
-            ("spark.cassandra.sql.inClauseToJoinConversionThreshold", "0"),
-            ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
-            ("spark.cassandra.concurrent.reads", "512"),
-
-            ("spark.cassandra.output.concurrent.writes", "5"),
-            ("spark.cassandra.output.batch.grouping.key", "none"),
-            ("spark.cassandra.output.batch.size.rows", "1")
-        ))
-
-
-    val spark: SparkContext = new SparkContext(conf)
-    val glueContext: GlueContext = new GlueContext(spark)
-    val sparkSession: SparkSession = glueContext.getSparkSession
-
-    import com.datastax.spark.connector._
-    import org.apache.spark.sql.cassandra._
-    import sparkSession.implicits._
-
-    Job.init(args("JOB_NAME"), glueContext, args.asJava)
-
-    val tableName = args("TABLE_NAME")
-    val keyspaceName = args("KEYSPACE_NAME")
-    val backupS3 = args("S3_URI")
-    val backupFormat = args("FORMAT")
-
-    val tableDf = sparkSession.read
-      .format("org.apache.spark.sql.cassandra")
-      .options(Map( "table" -> tableName, "keyspace" -> keyspaceName))
-      .load()
-
-    tableDf.write.format(backupFormat).mode(SaveMode.ErrorIfExists).save(backupS3)
-
-    Job.commit()
-  }
-}
-
-
-```
 ## Update the partitioner for your account
 In Apache Cassandra, partitioners control which nodes data is stored on in the cluster. Partitioners create a numeric token using a hashed value of the partition key. Cassandra uses this token to distribute data across nodes.  To use Apache Spark or AWS glue you will need to update the partitioner. You can execute this CQL command from the Amazon Keyspaces console [CQL editor](https://console.aws.amazon.com/keyspaces/home#cql-editor) 
 
@@ -197,7 +124,7 @@ You can use the following command to create a glue job using the script provided
 ```
 aws glue create-job \
     --name "AmazonKeyspacesExport" \
-    --role "GlueKeyspacesRestore" \
+    --role "GlueKeyspacesExport" \
     --description "Export Amazon Keyspaces table to s3" \
     --glue-version "2.0" \
     --number-of-workers 5 \
