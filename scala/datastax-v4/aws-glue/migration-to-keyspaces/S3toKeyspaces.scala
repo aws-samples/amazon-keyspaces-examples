@@ -1,3 +1,19 @@
+import com.amazonaws.services.glue.GlueContext
+import com.amazonaws.services.glue.util.GlueArgParser
+import com.amazonaws.services.glue.util.Job
+import org.apache.spark.SparkContext
+import org.apache.spark.sql.Dataset
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SaveMode
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.from_json
+import org.apache.spark.sql.streaming.Trigger
+import scala.collection.JavaConverters._
+import com.datastax.spark.connector._
+import org.apache.spark.sql.cassandra._
+import org.apache.spark.sql.SaveMode._
+import org.apache.hadoop.fs.{FileSystem, Path}
+import java.net.{URI}
 
 
 object GlueApp {
@@ -7,6 +23,7 @@ object GlueApp {
     val spark: SparkContext = new SparkContext()
     val glueContext: GlueContext = new GlueContext(spark)
     val sparkSession: SparkSession = glueContext.getSparkSession
+    import sparkSession.implicits._
 
     // @params: [JOB_NAME, KEYSPACE_NAME, TABLE_NAME, S3_URI_FULL_CHANGE, S3_URI_CURRENT_CHANGE, S3_URI_CURRENT_CHANGE, S3_URI_NEW_CHANGE]
     val args = GlueArgParser.getResolvedOptions(sysArgs, Seq("JOB_NAME", "KEYSPACE_NAME", "TABLE_NAME", "S3_URI_FULL_CHANGE", "S3_URI_CURRENT_CHANGE", "S3_URI_NEW_CHANGE").toArray)
