@@ -175,24 +175,22 @@ you can also explore a couple of Spark Cassandra configurations to further optim
 "spark.cassandra.input.fetch.sizeInRows"	 "800" 
 ```
 
+Add environment variables for your account ID from your AWS configuration, using aws-cli to create s3 bucket
+```
+export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+```
 ## Create S3 bucket to store job artifacts
 The AWS Glue ETL job will need to access jar dependencies, driver configuration, and scala script.
 ```
-aws s3 mb s3://amazon-keyspaces-artifacts
+aws s3 mb s3://amazon-keyspaces-artifacts-$AWS_ACCOUNT_ID
 ```
 
 ## Create S3 bucket to store job artifacts
 The AWS Glue ETL job will use an s3 bucket to backup keyspaces table data.
 ```
-aws s3 mb s3://amazon-keyspaces-backups
+aws s3 mb s3://amazon-keyspaces-backups-$AWS_ACCOUNT_ID
 ```
 
-## Create S3 bucket for Shuffle space
-With NoSQL its common to shuffle large sets of data. This can overflow local disk.  With AWS Glue, you can  use Amazon S3 to store Spark shuffle and spill data. This solution disaggregates compute and storage for your Spark jobs, and gives complete elasticity and low-cost shuffle storage, allowing you to run your most shuffle-intensive workloads reliably.
-
-```
-aws s3 mb s3://amazon-keyspaces-glue-shuffle
-```
 
 
 ## Upload job artifacts to S3
@@ -206,13 +204,13 @@ curl -L -O https://repo1.maven.org/maven2/com/datastax/spark/spark-cassandra-con
 
 curl -L -O https://github.com/aws/aws-sigv4-auth-cassandra-java-driver-plugin/releases/download/4.0.6-shaded-v2/aws-sigv4-auth-cassandra-java-driver-plugin-4.0.6-shaded.jar
 
-aws s3api put-object --bucket amazon-keyspaces-artifacts --key jars/spark-cassandra-connector-assembly_2.12-3.1.0.jar --body spark-cassandra-connector-assembly_2.12-3.1.0.jar
+aws s3api put-object --bucket amazon-keyspaces-artifacts-$AWS_ACCOUNT_ID --key jars/spark-cassandra-connector-assembly_2.12-3.1.0.jar --body spark-cassandra-connector-assembly_2.12-3.1.0.jar
 
-aws s3api put-object --bucket amazon-keyspaces-artifacts --key jars/aws-sigv4-auth-cassandra-java-driver-plugin-4.0.6-shaded.jar --body aws-sigv4-auth-cassandra-java-driver-plugin-4.0.6-shaded.jar
+aws s3api put-object --bucket amazon-keyspaces-artifacts-$AWS_ACCOUNT_ID --key jars/aws-sigv4-auth-cassandra-java-driver-plugin-4.0.6-shaded.jar --body aws-sigv4-auth-cassandra-java-driver-plugin-4.0.6-shaded.jar
 
-aws s3api put-object --bucket amazon-keyspaces-artifacts --key conf/cassandra-application.conf --body cassandra-application.conf
+aws s3api put-object --bucket amazon-keyspaces-artifacts-$AWS_ACCOUNT_ID --key conf/cassandra-application.conf --body cassandra-application.conf
 
-aws s3api put-object --bucket amazon-keyspaces-artifacts --key scripts/export-sample.scala --body export-sample.scala
+aws s3api put-object --bucket amazon-keyspaces-artifacts-$AWS_ACCOUNT_ID --key scripts/export-sample.scala --body export-sample.scala
 
 ```
 ### Create AWS Glue ETL Job
@@ -225,20 +223,17 @@ aws glue create-job \
     --glue-version "3.0" \
     --number-of-workers 2 \
     --worker-type "G.1X" \
-    --command "Name=glueetl,ScriptLocation=s3://amazon-keyspaces-artifacts/scripts/export-sample.scala" \
+    --command "Name=glueetl,ScriptLocation=s3://amazon-keyspaces-artifacts-$AWS_ACCOUNT_ID/scripts/export-sample.scala" \
     --default-arguments '{
         "--job-language":"scala",
         "--FORMAT":"parquet",
         "--KEYSPACE_NAME":"my_keyspace",
         "--TABLE_NAME":"my_table",
-        "--S3_URI":"s3://amazon-keyspaces-backups/snap-shots/",
+        "--S3_URI":"s3://amazon-keyspaces-backups-$AWS_ACCOUNT_ID/snap-shots/",
         "--DRIVER_CONF":"cassandra-application.conf",
-        "--extra-jars":"s3://amazon-keyspaces-artifacts/jars/spark-cassandra-connector-assembly_2.12-3.1.0.jar,s3://amazon-keyspaces-artifacts/jars/aws-sigv4-auth-cassandra-java-driver-plugin-4.0.6-shaded.jar",
-        "--extra-files":"s3://amazon-keyspaces-artifacts/conf/cassandra-application.conf",
+        "--extra-jars":"s3://amazon-keyspaces-artifacts-$AWS_ACCOUNT_ID/jars/spark-cassandra-connector-assembly_2.12-3.1.0.jar,s3://amazon-keyspaces-artifacts/jars/aws-sigv4-auth-cassandra-java-driver-plugin-4.0.6-shaded.jar",
+        "--extra-files":"s3://amazon-keyspaces-artifacts-$AWS_ACCOUNT_ID/conf/cassandra-application.conf",
         "--enable-continuous-cloudwatch-log":"true",
-        "--write-shuffle-files-to-s3":"true",
-        "--write-shuffle-spills-to-s3":"true",
-        "--TempDir":"s3://amazon-keyspaces-glue-shuffle",
         "--user-jars-first":"true",
         "--class":"GlueApp"
     }'
