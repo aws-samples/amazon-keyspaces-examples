@@ -125,11 +125,18 @@ object GlueApp {
         .setAll(
          Seq(
             ("spark.task.maxFailures",  "100"),
-            ("spark.cassandra.connection.config.profile.path",  driverConfFileName),
             ("spark.cassandra.query.retry.count", "1000"),
+            ("spark.cassandra.connection.config.profile.path",  driverConfFileName),
+            ("spark.cassandra.input.consistency.level",  "LOCAL_ONE"),
+            ("spark.cassandra.output.consistency.level",  "LOCAL_ONE"),
+            
             ("spark.cassandra.sql.inClauseToJoinConversionThreshold", "0"),
             ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
             ("spark.cassandra.concurrent.reads",  "512"),
+            ("spark.cassandra.input.fetch.sizeInRows", "1000"),
+            ("spark.cassandra.output.concurrent.writes", "15"),
+            ("spark.cassandra.output.batch.grouping.key", "none"),
+            ("spark.cassandra.output.batch.size.rows", "1"),
             ("spark.cassandra.input.split.sizeInMB",  "64")
 
         ))
@@ -191,6 +198,12 @@ The AWS Glue ETL job will use an s3 bucket to backup keyspaces table data.
 aws s3 mb s3://amazon-keyspaces-backups-$AWS_ACCOUNT_ID
 ```
 
+## Create S3 bucket for Shuffle space
+With NoSQL its common to shuffle large sets of data. This can overflow local disk. With AWS Glue, you can use Amazon S3 to store Spark shuffle and spill data. This solution disaggregates compute and storage for your Spark jobs, and gives complete elasticity and low-cost shuffle storage, allowing you to run your most shuffle-intensive workloads reliably.
+
+```
+aws s3 mb s3://amazon-keyspaces-glue-shuffle-$AWS_ACCOUNT_ID
+```
 
 
 ## Upload job artifacts to S3
@@ -235,6 +248,9 @@ aws glue create-job \
         "--extra-files":"s3://amazon-keyspaces-artifacts-$AWS_ACCOUNT_ID/conf/cassandra-application.conf",
         "--enable-continuous-cloudwatch-log":"true",
         "--user-jars-first":"true",
+        "--write-shuffle-files-to-s3":"true",
+        "--write-shuffle-spills-to-s3":"true",
+        "--TempDir":"s3://amazon-keyspaces-glue-shuffle-$AWS_ACCOUNT_ID",
         "--class":"GlueApp"
     }'
 ```
