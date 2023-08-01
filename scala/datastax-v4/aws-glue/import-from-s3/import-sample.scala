@@ -40,7 +40,8 @@ object GlueApp {
           
           ("spark.cassandra.connection.config.profile.path",  driverConfFileName),
           ("spark.cassandra.query.retry.count", "1000"),
-          ("spark.cassandra.output.consistency.level",  "LOCAL_QUORUM"),
+          ("spark.cassandra.output.consistency.level",  "LOCAL_QUORUM"),//WRITES
+          ("spark.cassandra.input.consistency.level",  "LOCAL_ONE"),//READS
 
           ("spark.cassandra.sql.inClauseToJoinConversionThreshold", "0"),
           ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
