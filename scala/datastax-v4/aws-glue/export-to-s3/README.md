@@ -98,7 +98,7 @@ The job will require
 * export-sample.scala script containing the export code.
 
 ```
-curl -L -O https://repo1.maven.org/maven2/com/datastax/spark/spark-cassandra-connector-assembly_2.11/2.5.2/spark-cassandra-connector-assembly_2.11-2.5.2.jar
+curl -L -O https://repo1.maven.org/maven2/com/datastax/spark/spark-cassandra-connector-assembly_2.12/3.1.0/spark-cassandra-connector-assembly_2.12-3.1.0.jar
 
 aws s3api put-object --bucket amazon-keyspaces-artifacts --key jars/spark-cassandra-connector-assembly_2.11-2.5.2.jar --body spark-cassandra-connector-assembly_2.11-2.5.2.jar
 
@@ -114,7 +114,7 @@ aws glue create-job \
     --name "AmazonKeyspacesExport" \
     --role "GlueKeyspacesExport" \
     --description "Export Amazon Keyspaces table to s3" \
-    --glue-version "2.0" \
+    --glue-version "3.0" \
     --number-of-workers 5 \
     --worker-type "G.1X" \
     --command "Name=glueetl,ScriptLocation=s3://amazon-keyspaces-artifacts/scripts/export-sample.scala" \
@@ -125,7 +125,7 @@ aws glue create-job \
         "--TABLE_NAME":"my_table",
         "--S3_URI":"s3://amazon-keyspaces-backups/snapshots/2023-08-01/snapshot",
         "--DRIVER_CONF":"cassandra-application.conf",
-        "--extra-jars":"s3://amazon-keyspaces-artifacts/jars/spark-cassandra-connector-assembly_2.11-2.5.2.jar",
+        "--extra-jars":"s3://amazon-keyspaces-artifacts/jars/spark-cassandra-connector-assembly_2.12-3.1.0.jar",
         "--extra-files":"s3://amazon-keyspaces-artifacts/conf/cassandra-application.conf",
         "--enable-continuous-cloudwatch-log":"true",
         "--write-shuffle-files-to-s3":"true",
