@@ -10,9 +10,16 @@ This example provides scala script for calculate the top partitions with the mos
 ### Performing Top N for rows in a partition
 The following example uses the spark-cassandra-connector. With this script you can provide the TOP N for single or multi value partition keys.   
 
-
 ## Update the partitioner for your account
-In Apache Cassandra, partitioners control which nodes data is stored on in the cluster. Partitioners create a numeric token using a hashed value of the partition key. Cassandra uses this token to distribute data across nodes.  To use Apache Spark or AWS glue you will need to update the partitioner. You can execute this CQL command from the Amazon Keyspaces console [CQL editor](https://console.aws.amazon.com/keyspaces/home#cql-editor)
+In Apache Cassandra, partitioners control which nodes data is stored on in the cluster. Partitioners create a numeric token using a hashed value of the partition key. Cassandra uses this token to distribute data across nodes.  To use Apache Spark or AWS glue you may need to update the partitioner if set to DefaultPartitioner or RandomPartitioner to Mumur3Partitioner. You can execute this CQL command from the Amazon Keyspaces console [CQL editor](https://console.aws.amazon.com/keyspaces/home#cql-editor)
+
+```
+SELECT partitioner FROM system.local;
+
+UPDATE system.local set partitioner='org.apache.cassandra.dht.Murmur3Partitioner' where key='local';
+```
+For more info see [Working with partitioners](https://docs.aws.amazon.com/keyspaces/latest/devguide/working-with-partitioners.html)
+
 
 ## Create IAM ROLE for AWS Glue
 Create a new AWS service role named 'GlueKeyspacesRole' with AWS Glue as a trusted entity.

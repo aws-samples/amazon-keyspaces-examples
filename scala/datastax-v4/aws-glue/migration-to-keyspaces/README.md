@@ -8,6 +8,17 @@ This allows you to migrate data from the Cassandra cluster to Amazon Keyspaces w
 * Amazon S3 bucket to store intermediate parquet files with incremental data changes
 * Amazon S3 bucket to store job configuration and scripts
 
+## Update the partitioner for your account
+In Apache Cassandra, partitioners control which nodes data is stored on in the cluster. Partitioners create a numeric token using a hashed value of the partition key. Cassandra uses this token to distribute data across nodes.  To use Apache Spark or AWS glue you may need to update the partitioner if set to DefaultPartitioner or RandomPartitioner to Mumur3Partitioner. You can execute this CQL command from the Amazon Keyspaces console [CQL editor](https://console.aws.amazon.com/keyspaces/home#cql-editor)
+
+```
+SELECT partitioner FROM system.local;
+
+UPDATE system.local set partitioner='org.apache.cassandra.dht.Murmur3Partitioner' where key='local';
+```
+For more info see [Working with partitioners](https://docs.aws.amazon.com/keyspaces/latest/devguide/working-with-partitioners.html)
+
+
 ## Getting started
 ### Create a target keyspace and table in Amazon Keyspaces Console
 
@@ -345,6 +356,7 @@ aws glue create-job \
 
 ### Create AWS Glue ETL Job to write incremental to Amazon Keyspaces
 You can use the following command to create a glue job using the script provided in this example. You can also take the parameters and enter them into the AWS Console.
+
 ```shell script
 aws glue create-job \
     --name "S3toKeyspaces" \
