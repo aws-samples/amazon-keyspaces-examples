@@ -1,13 +1,7 @@
-## Using Glue Export Example
-This example provides scala script for exporting Amazon Keyspaces table data to S3 using AWS Glue. This allows you to export data from Amazon Keyspaces without setting up a spark cluster.
+## Using Glue Incremental Export and Import Example
+This example provides scala script for creating incremental exports. This can be used to migrate data from Apache Cassandra to Amazon  Keyspaces or create custom backups. Given two exports from different time periods, this script will create a diff consisting of subset consisting of INSERTS, UPDATES, DELETES. By storing the incremental differences one can reduced the overall size of incremental backups.  This example is dependent on previous exports created by [export example](../export-to-s3). This repo leverages diff functionality found in [spark extensions project](https://github.com/G-Research/spark-extension). 
 
-## Prerequisites
-* Amazon Keyspaces table to export
-* Amazon S3 bucket to store backups
-* Amazon S3 bucket to store job configuration and script
-
-### Export to S3
-The following example exports data to S3 using the spark-cassandra-connector. The script takes four parameters KEYSPACE_NAME, KEYSPACE_TABLE, S3_URI for backup files and FORMAT option (parquet, csv, json).  
+![incremental export](incremental-export.png)
 
 
 ## Update the partitioner for your account
@@ -30,7 +24,6 @@ partitioner
 org.apache.cassandra.dht.RandomPartitioner
 ```
 
-
 For more info see [Working with partitioners](https://docs.aws.amazon.com/keyspaces/latest/devguide/working-with-partitioners.html)
 
 ## Create IAM ROLE for AWS Glue
@@ -47,13 +40,13 @@ Using the RateLimitingRequestThrottler we can ensure that request do not exceed 
 ```
 
 datastax-java-driver {
-  basic.request.consistency = "LOCAL_ONE"
   basic.request.default-idempotence = true
   basic.contact-points = [ "cassandra.us-east-1.amazonaws.com:9142"]
   advanced.reconnect-on-init = true
 
    basic.load-balancing-policy {
         local-datacenter = "us-east-1"
+        slow-replica-avoidance = true
      }
 
    advanced.auth-provider = {
@@ -74,8 +67,7 @@ datastax-java-driver {
       hostname-validation = false
     }
 
-    advanced.connection.pool.local.size = 2
-    advanced.resolve-contact-points = false
+    advanced.connection.pool.local.size = 3
 
 }
 
@@ -83,25 +75,29 @@ datastax-java-driver {
 
 ## Create S3 bucket to store job artifacts
 The AWS Glue ETL job will need to access jar dependencies, driver configuration, and scala script.
+
+```shell script
+export ARTIFACT_BUCKET=amazon-keyspaces-artifacts-$(aws sts get-caller-identity --query Account --output text)
+export SNAPSHOT_BUCKET=amazon-keyspaces-snapshots-$(aws sts get-caller-identity --query Account --output text)
+export SHUFFLE_BUCKET=amazon-keyspaces-shuffle-$(aws sts get-caller-identity --query Account --output text)
 ```
-aws s3 mb s3://amazon-keyspaces-artifacts
+
+```
+aws s3 mb s3://$SNAPSHOT_BUCKET
 ```
 
 ## Create S3 bucket to store job artifacts
 The AWS Glue ETL job will use an s3 bucket to backup keyspaces table data.
 ```
-aws s3 mb s3://amazon-keyspaces-backups
+aws s3 mb s3://$ARTIFACT_BUCKET
 ```
-
 
 ## Create S3 bucket for Shuffle space
 With NoSQL its common to shuffle large sets of data. This can overflow local disk.  With AWS Glue, you can  use Amazon S3 to store Spark shuffle and spill data. This solution disaggregates compute and storage for your Spark jobs, and gives complete elasticity and low-cost shuffle storage, allowing you to run your most shuffle-intensive workloads reliably.
 
 ```
-aws s3 mb s3://amazon-keyspaces-glue-shuffle
+aws s3 mb s3://$SHUFFLE_BUCKET
 ```
-
-
 
 ## Upload job artifacts to S3
 The job will require
@@ -110,23 +106,31 @@ The job will require
 * export-sample.scala script containing the export code.
 
 ```
-curl -L -O https://repo1.maven.org/maven2/com/datastax/spark/spark-cassandra-connector-assembly_2.11/2.5.2/spark-cassandra-connector-assembly_2.11-2.5.2.jar
+curl -L -O https://repo1.maven.org/maven2/com/datastax/spark/spark-cassandra-connector-assembly_2.12/3.1.0/spark-cassandra-connector-assembly_2.12-3.1.0.jar
 
-aws s3api put-object --bucket amazon-keyspaces-artifacts --key jars/spark-cassandra-connector-assembly_2.11-2.5.2.jar --body spark-cassandra-connector-assembly_2.11-2.5.2.jar
+curl -L -O https://repo1.maven.org/maven2/uk/co/gresearch/spark/spark-extension_2.12/2.8.0-3.4/spark-extension_2.12-2.8.0-3.4.jar
 
-aws s3api put-object --bucket amazon-keyspaces-artifacts --key conf/cassandra-application.conf --body cassandra-application.conf
+aws s3api put-object --bucket $ARTIFACT_BUCKET --key jars/spark-cassandra-connector-assembly_2.12-3.1.0.jar --body spark-cassandra-connector-assembly_2.12-3.1.0.jar
 
-aws s3api put-object --bucket amazon-keyspaces-artifacts --key scripts/export-sample.scala --body export-sample.scala
+aws s3api put-object --bucket $ARTIFACT_BUCKET --key jars/spark-extension_2.12-2.8.0-3.4.jar --body spark-extension_2.12-2.8.0-3.4.jar
+
+aws s3api put-object --bucket $ARTIFACT_BUCKET --key conf/cassandra-application.conf --body cassandra-application.conf
+
+aws s3api put-object --bucket $ARTIFACT_BUCKET --key scripts/incremental-export-sample.scala --body export-sample.scala
+
+aws s3api put-object --bucket $ARTIFACT_BUCKET --key scripts/incremental-import-sample.scala --body export-sample.scala
 
 ```
 ### Create AWS Glue ETL Job
 You can use the following command to create a glue job using the script provided in this example. You can also take the parameters and enter them into the AWS Console.
+
+### Export 
 ```
 aws glue create-job \
-    --name "AmazonKeyspacesExport" \
+    --name "AmazonKeyspacesIncrementalExport" \
     --role "GlueKeyspacesExport" \
-    --description "Export Amazon Keyspaces table to s3" \
-    --glue-version "2.0" \
+    --description "Incremental Export for Amazon Keyspaces" \
+    --glue-version "3.0" \
     --number-of-workers 5 \
     --worker-type "G.1X" \
     --command "Name=glueetl,ScriptLocation=s3://amazon-keyspaces-artifacts/scripts/export-sample.scala" \
@@ -135,14 +139,48 @@ aws glue create-job \
         "--FORMAT":"parquet",
         "--KEYSPACE_NAME":"my_keyspace",
         "--TABLE_NAME":"my_table",
-        "--S3_URI":"s3://amazon-keyspaces-backups/snapshots/2023-08-01/snapshot",
+        "--S3_URI":"s3://SNAPSHOT_BUCKET/snapshots/",
         "--DRIVER_CONF":"cassandra-application.conf",
-        "--extra-jars":"s3://amazon-keyspaces-artifacts/jars/spark-cassandra-connector-assembly_2.11-2.5.2.jar",
-        "--extra-files":"s3://amazon-keyspaces-artifacts/conf/cassandra-application.conf",
+        "--DISTINCT_KEYS":"id,create_date",
+        "--TODAY_DATE":"2023-08-02", 
+        "--YESTERDAY_DATE":"2023-08-02",
+        "--user-jars-first":"true",
+        "--extra-jars":"s3://$ARTIFACT_BUCKET/jars/spark-cassandra-connector-assembly_2.12-3.1.0.jar,s3://$ARTIFACT_BUCKET/jars/spark-extension_2.12-2.8.0-3.4.jar",
+        "--extra-files":"s3://$ARTIFACT_BUCKET/conf/cassandra-application.conf",
         "--enable-continuous-cloudwatch-log":"true",
         "--write-shuffle-files-to-s3":"true",
         "--write-shuffle-spills-to-s3":"true",
-        "--TempDir":"s3://amazon-keyspaces-glue-shuffle",
+        "--TempDir":"s3://$SHUFFLE_BUCKET",
+        "--class":"GlueApp"
+    }'
+```
+
+### Import 
+
+```
+aws glue create-job \
+    --name "AmazonKeyspacesIncrementalImport" \
+    --role "GlueKeyspacesExport" \
+    --description "Incremental Import for Amazon Keyspaces" \
+    --glue-version "3.0" \
+    --number-of-workers 5 \
+    --worker-type "G.1X" \
+    --command "Name=glueetl,ScriptLocation=s3://amazon-keyspaces-artifacts/scripts/incremental-import-sample.scala" \
+    --default-arguments '{
+        "--job-language":"scala",
+        "--FORMAT":"parquet",
+        "--KEYSPACE_NAME":"my_keyspace",
+        "--TABLE_NAME":"my_table",
+        "--S3_URI":"s3://SNAPSHOT_BUCKET/snapshots/2023-08-02/incremental-snapshot/",
+        "--DRIVER_CONF":"cassandra-application.conf",
+        "--DISTINCT_KEYS":"id,create_date",
+        "--user-jars-first":"true",
+        "--extra-jars":"s3://$ARTIFACT_BUCKET/jars/spark-cassandra-connector-assembly_2.12-3.1.0.jar",
+        "--extra-files":"s3://$ARTIFACT_BUCKET/conf/cassandra-application.conf",
+        "--enable-continuous-cloudwatch-log":"true",
+        "--write-shuffle-files-to-s3":"true",
+        "--write-shuffle-spills-to-s3":"true",
+        "--TempDir":"s3://$SHUFFLE_BUCKET",
         "--class":"GlueApp"
     }'
 ```
