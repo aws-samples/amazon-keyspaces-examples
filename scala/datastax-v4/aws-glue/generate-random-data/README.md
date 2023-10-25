@@ -17,9 +17,11 @@ CREATE TABLE IF NOT EXISTS aws.my_table_example (
 	"count" bigint,
 	PRIMARY KEY("id", "create_date"))
 WITH CUSTOM_PROPERTIES = {
-	'capacity_mode':{
-		'throughput_mode':'PAY_PER_REQUEST'
-	},
+    'capacity_mode':{
+        'throughput_mode':'PROVISIONED',
+        'write_capacity_units':30000,
+        'read_capacity_units':30000
+    },
 	'point_in_time_recovery':{
 		'status':'enabled'
 	},
@@ -55,11 +57,19 @@ Using the RateLimitingRequestThrottler we can ensure that request do not exceed 
 
 [cassandra-application.conf](cassandra-application.conf)
 
+
+
 ## Create S3 bucket to store job artifacts
 The AWS Glue ETL job will need to access jar dependencies, driver configuration, and scala script.
 
+```shell script
+export ARTIFACT_BUCKET=amazon-keyspaces-artifacts-$(aws sts get-caller-identity --query Account --output text)
+export SNAPSHOT_BUCKET=amazon-keyspaces-snapshots-$(aws sts get-caller-identity --query Account --output text)
+export SHUFFLE_BUCKET=amazon-keyspaces-shuffle-$(aws sts get-caller-identity --query Account --output text)
 ```
-aws s3 mb s3://amazon-keyspaces-artifacts
+
+```
+aws s3 mb s3://ARTIFACT_BUCKET
 ```
 
 
@@ -67,7 +77,7 @@ aws s3 mb s3://amazon-keyspaces-artifacts
 With NoSQL its common to shuffle large sets of data. This can overflow local disk.  With AWS Glue, you can  use Amazon S3 to store Spark shuffle and spill data. This solution disaggregates compute and storage for your Spark jobs, and gives complete elasticity and low-cost shuffle storage, allowing you to run your most shuffle-intensive workloads reliably.
 
 ```
-aws s3 mb s3://amazon-keyspaces-glue-shuffle
+aws s3 mb s3://SHUFFLE_BUCKET
 ```
 
 ## Upload job artifacts to S3
@@ -81,11 +91,11 @@ In the following example you will need to create your own unique bucket names. T
 ```
 curl -L -O https://repo1.maven.org/maven2/com/datastax/spark/spark-cassandra-connector-assembly_2.11/2.5.2/spark-cassandra-connector-assembly_2.11-2.5.2.jar
 
-aws s3api put-object --bucket amazon-keyspaces-artifacts --key jars/spark-cassandra-connector-assembly_2.11-2.5.2.jar --body spark-cassandra-connector-assembly_2.11-2.5.2.jar
+aws s3api put-object --bucket $ARTIFACT_BUCKET --key jars/spark-cassandra-connector-assembly_2.11-2.5.2.jar --body spark-cassandra-connector-assembly_2.11-2.5.2.jar
 
-aws s3api put-object --bucket amazon-keyspaces-artifacts --key conf/cassandra-application.conf --body cassandra-application.conf
+aws s3api put-object --bucket $ARTIFACT_BUCKET --key conf/cassandra-application.conf --body cassandra-application.conf
 
-aws s3api put-object --bucket amazon-keyspaces-artifacts --key scripts/import-sample.scala --body import-sample.scala
+aws s3api put-object --bucket $ARTIFACT_BUCKET --key scripts/generate-sample.scala --body generate-sample.scala 
 
 ```
 ### Create AWS Glue ETL Job
@@ -96,23 +106,23 @@ aws glue create-job \
     --name "AmazonKeyspacesRandomDataImport" \
     --role "GlueKeyspacesImport" \
     --description "Import Random data into Amazon Keyspaces" \
-    --glue-version "2.0" \
-    --number-of-workers 5 \
+    --glue-version "3.0" \
+    --number-of-workers 30 \
     --worker-type "G.1X" \
-    --command "Name=glueetl,ScriptLocation=s3://amazon-keyspaces-artifacts/scripts/generate-sample.scala" \
+    --command "Name=glueetl,ScriptLocation=s3://$ARTIFACT_BUCKET/scripts/generate-sample.scala" \
     --default-arguments '{
         "--job-language":"scala",
         "--KEYSPACE_NAME":"aws",
         "--TABLE_NAME":"my_table_example",
+        "--S3_URI":"s3://SNAPSHOT_BUCKET/snapshots/random/2023-08-03/",
         "--DRIVER_CONF":"cassandra-application.conf",
-        "--USERNAME":"example-at-000000000",
-        "--PASSWORD":"EXAMPLEKEYSAMPLE=",
-        "--extra-jars":"s3://amazon-keyspaces-artifacts/jars/spark-cassandra-connector-assembly_2.11-2.5.2.jar",
-        "--extra-files":"s3://amazon-keyspaces-artifacts/conf/cassandra-application.conf",
+        "--user-jars-first":"true",
+        "--extra-jars":"s3://$ARTIFACT_BUCKET/jars/spark-cassandra-connector-assembly_2.12-3.1.0.jar",
+        "--extra-files":"s3://$ARTIFACT_BUCKET/conf/cassandra-application.conf",
         "--enable-continuous-cloudwatch-log":"true",
         "--write-shuffle-files-to-s3":"true",
         "--write-shuffle-spills-to-s3":"true",
-        "--TempDir":"s3://amazon-keyspaces-glue-shuffle",
+        "--TempDir":"s3://$SHUFFLE_BUCKET",
         "--class":"GlueApp"
     }'
 ```
