@@ -2,16 +2,17 @@
 
 #Setup stack name is the original stack name used to setup the connector in S3
 PARENT_STACK_NAME=${1:-aksglue}
-KEYSPACE_NAME=${2:-mykeyspace}
-TABLE_NAME=${3:-mytable}
-FORMAT=${4:-parquet}
+KEYSPACE_NAME=${3:-mykeyspace}
+TABLE_NAME=${4:-mytable}
+FORMAT=${5:-parquet}
+STACK_NAME="${2:-$PARENT_STACK_NAME-export}"
 
 echo "Parent stack used: ${PARENT_STACK_NAME}"
+echo "Export stack used: ${STACK_NAME}"
 echo "Keyspace used used: ${KEYSPACE_NAME}"
 echo "Table used: ${TABLE_NAME}"
 echo "Fornat used: ${FORMAT}"
 
-export STACK_NAME=$PARENT_STACK_NAME-export
 
 export KEYSPACES_GLUE_BUCKET=$(aws cloudformation describe-stacks --query "Stacks[?StackName==\`$PARENT_STACK_NAME\`][].Outputs[?ExportName==\`KeyspacesBucketNameExport-$PARENT_STACK_NAME\`]".OutputValue --output text)
 

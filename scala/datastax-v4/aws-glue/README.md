@@ -5,10 +5,13 @@ Using AWS Glue and the Spark Cassandra Connector, develoeprs can create repatabl
 
 ### Getting Started
 
-We created a simple shell script to setup the Spark Cassandra connector with Glue. The following script takes two optional parameters. A ```STACKNAME``` which will be used to create resources with cloudformation, and ```CUSTOM_S3_BUCKET``` which defines the s3 bucket used to store the Spark Cassandra Connector artifacts. The STACKNAME used here will be import when deploying cloudformation scripts in patterns modules contained within this repository. 
+We created a simple shell script to setup the Spark Cassandra connector with Glue. The following script takes three optional parameters. 
+* ```SETUP_STACKNAME``` which will be used to create resources with cloudformation. The SETUP_STACKNAME used here will be import when deploying cloudformation scripts in patterns modules contained within this repository. 
+* ```S3_BUCKET_NAME``` which defines the s3 bucket used to store the Spark Cassandra Connector artifacts. 
+* ```GLUE_SERVICE_ROLE_NAME``` defines the name for the service role used to run Glue jobs that connect to Amazon Keyspaces and S3. 
 
 ```shell
-./setup-connector.sh STACKNAME S3_BUCKET_NAME
+./setup-connector.sh SETUP_STACKNAME S3_BUCKET_NAME GLUE_SERVICE_ROLE_NAME
 
 ```
 
