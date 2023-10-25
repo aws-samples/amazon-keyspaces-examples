@@ -47,6 +47,13 @@ The resulting directory structure takes on the following shape. The required jar
             \-------- Keyspaces read\write access
 
 ```
+### Region configuration
+You will need to update the ```keyspaces-application.conf``` configuration file for the AWS region where you will be executing glue jobs. 
+  * __basic.contact-points__ - Amazon Keyspaces service endpoint
+  * __basic.load-balancing-policy.local-datacenter__ - Load balancing policy
+  * __advanced.auth-provider.aws-region__ - Sigv4 auth provider 
+
+https://github.com/aws-samples/amazon-keyspaces-examples/blob/621beef936899509d6dfd071526971974f803d19/scala/datastax-v4/aws-glue/keyspaces-application.conf#L4-L22
  
 ### Update the partitioner for your account
 In Apache Cassandra, partitioners control which nodes data is stored on in the cluster. Partitioners create a numeric token using a hashed value of the partition key. Cassandra uses this token to distribute data across nodes.  To use Apache Spark or AWS glue you may need to update the partitioner if set to DefaultPartitioner or RandomPartitioner to Mumur3Partitioner. You can execute this CQL command from the Amazon Keyspaces console [CQL editor](https://console.aws.amazon.com/keyspaces/home#cql-editor)
