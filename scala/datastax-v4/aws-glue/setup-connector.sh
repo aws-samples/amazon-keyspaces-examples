@@ -1,20 +1,22 @@
  #!/bin/bash
 
-#Dependency versions. These versions are used to download required jars for AWS Glue jobs
-SPARK_CONNNECTOR_VERSION=3.1.0
-SPARK_EXTENSIONS_VERSION=2.8.0-3.4
-SIGV4_PLUGIN_VERSION=4.0.9
-SCALA_VERSION=2.12
-
-#Modifiable parameters 
+#distribution of downloaded artifacts  
 export ARTIFACT_DIR=dist
-STACK_NAME=${1:-aksglue}
-
-echo "STACK_NAME: ${STACK_NAME}"
+#Dependency versions. These versions are used to download required jars for AWS Glue jobs
+export SPARK_CONNNECTOR_VERSION=3.1.0
+export SPARK_EXTENSIONS_VERSION=2.8.0-3.4
+export SIGV4_PLUGIN_VERSION=4.0.9
+export SCALA_VERSION=2.12
 
 # validate required executables required for this script. 
 # if validation fails the script will exit
 echo Validating setup ...
+
+if [ $# -gt 3 ]; then
+    echo "Invalid number of arguments: STACK_NAME, BUCKET_NAME, ROLE_NAME"
+    exit 1
+fi
+
 if ! command -v git &> /dev/null
 then
     echo "Git \"git\" is not installed.  git is required for building Retry policy class. See https://git-scm.com/book/en/v2/Getting-Started-Installing-Git "
@@ -44,21 +46,23 @@ fi
 if [ -d "$ARTIFACT_DIR" ]; then
   echo "Local directory: \"$ARTIFACT_DIR\" already exist. Please clean up before running again"
   exit 1
-else
-  mkdir $ARTIFACT_DIR
 fi
 
-#Dynamic Properties. 
+#Modifiable Properties. 
 ## Properties here are derived from Modifiable properties, environment, or service calls
-export KEYSPACES_GLUE_BUCKET_PREFIX=amazon-keyspaces-glue-$STACK_NAME
-export GLUESERVICEROLE_NAME=amazon-keyspaces-glue-servcie-role-$STACK_NAME
+export STACK_NAME="${1:-aksglue}"
+export KEYSPACES_GLUE_BUCKET="${2:-amazon-keyspaces-glue-$STACK_NAME-$AWS_ACCOUNT_ID}"
+export KEYSPACES_GLUE_SERVICE_ROLE="${3:-amazon-keyspaces-glue-servcie-role-$STACK_NAME}"
 
-export KEYSPACES_GLUE_BUCKET=${1:-$KEYSPACES_GLUE_BUCKET_PREFIX-$AWS_ACCOUNT_ID}
 export SPARK_CONNNECTOR=spark-cassandra-connector-assembly_2.12-$SPARK_CONNNECTOR_VERSION.jar
 export SPARK_EXTENSIONS=spark-extension_2.12-$SPARK_EXTENSIONS_VERSION.jar
 export SIGV4_PLUGIN=aws-sigv4-auth-cassandra-java-driver-plugin-$SIGV4_PLUGIN_VERSION-shaded.jar
 export KEYSPACES_RETRY_POLICY=amazon-keyspaces-helpers-1.0-SNAPSHOT.jar
 export GLUE_SETUP_TEMPLATE=glue-setup-template.yaml
+
+echo "STACK_NAME: ${STACK_NAME}"
+echo "Creating bucket with name $KEYSPACES_GLUE_BUCKET"
+echo "Creating role with name $KEYSPACES_GLUE_SERVICE_ROLE"
 
 #aws s3 head-bucket help # "mike" || echo " Bucket already exists" && exit 1 
 ### Create bucket and Glue Service Role 
@@ -71,7 +75,7 @@ export GLUE_SETUP_TEMPLATE=glue-setup-template.yaml
 
 ### Using Cloudformation create-trable 
 echo Creating bucket and IAM service role through AWS CloudFormation ...
-aws cloudformation create-stack --stack-name ${STACK_NAME} --parameters ParameterKey=KeyspacesBucketName,ParameterValue=${KEYSPACES_GLUE_BUCKET} ParameterKey=KeyspacesGlueServiceRoleName,ParameterValue=${GLUESERVICEROLE_NAME} --template-body 'file://${GLUE_SETUP_TEMPLATE}' --capabilities CAPABILITY_NAMED_IAM  || exit 1
+aws cloudformation create-stack --stack-name ${STACK_NAME} --parameters ParameterKey=KeyspacesBucketName,ParameterValue=${KEYSPACES_GLUE_BUCKET} ParameterKey=KeyspacesGlueServiceRoleName,ParameterValue=${KEYSPACES_GLUE_SERVICE_ROLE} --template-body 'file://${GLUE_SETUP_TEMPLATE}' --capabilities CAPABILITY_NAMED_IAM  || exit 1
 
 echo Waiting for CloudFormation stack to complete ...
 aws cloudformation wait stack-create-complete --stack-name ${STACK_NAME}  || exit 1 
@@ -80,6 +84,8 @@ aws cloudformation wait stack-create-complete --stack-name ${STACK_NAME}  || exi
 # ***  spark cassandra connector for spark cassandra interfacing
 # ***  sigv4-pluggin to use glue service roles to connect to Keyspaces 
 # ***  spark-extension added libraries to help compare differences in exports
+
+mkdir $ARTIFACT_DIR
 
 echo Downloading $SPARK_CONNNECTOR ... 
 curl -L -f -o $ARTIFACT_DIR/$SPARK_CONNNECTOR https://repo1.maven.org/maven2/com/datastax/spark/spark-cassandra-connector-assembly_$SCALA_VERSION/$SPARK_CONNNECTOR_VERSION/$SPARK_CONNNECTOR  || exit 1
@@ -102,7 +108,7 @@ aws s3api put-object --bucket $KEYSPACES_GLUE_BUCKET --key jars/$SIGV4_PLUGIN   
 
 git clone https://github.com/aws-samples/amazon-keyspaces-java-driver-helpers $ARTIFACT_DIR/amazon-keyspaces-java-driver-helpers
 
-mvn clean package -Dmaven.test.skip=true -f $ARTIFACT_DIR/amazon-keyspaces-java-driver-helpers/pom.xml || exit 1
+mvn clean package -Dmaven.test.skip=true -q -f $ARTIFACT_DIR/amazon-keyspaces-java-driver-helpers/pom.xml || exit 1
 
 aws s3api put-object --bucket $KEYSPACES_GLUE_BUCKET --key jars/$KEYSPACES_RETRY_POLICY  --body $ARTIFACT_DIR/amazon-keyspaces-java-driver-helpers/target/$KEYSPACES_RETRY_POLICY || exit 1
 

@@ -70,11 +70,11 @@ Resources:
         - IMPORTBUCKETNAME: 
             Fn::ImportValue:
               !Sub 'KeyspacesBucketNameExport-${ParentStack}'
-        "--FORMAT": "${FORMAT}"
+        "--FORMAT": !Sub '${FORMAT}'
         "--KEYSPACE_NAME": !Sub '${KeyspaceName}'
         "--TABLE_NAME": !Sub '${TableName}'
         "--S3_URI": !Sub 
-          - 's3://${IMPORTBUCKETNAME}/export/${KeyspaceName}/${TableName}/full/'
+          - 's3://${IMPORTBUCKETNAME}/export/'
           - IMPORTBUCKETNAME:
               Fn::ImportValue:
                 !Sub 'KeyspacesBucketNameExport-${ParentStack}'

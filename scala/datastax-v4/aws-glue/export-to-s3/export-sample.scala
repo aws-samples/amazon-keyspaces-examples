@@ -18,6 +18,10 @@ import com.datastax.spark.connector.cql._
 import com.datastax.oss.driver.api.core._
 import org.apache.spark.sql.functions.rand
 import com.amazonaws.services.glue.log.GlueLogger
+import java.time.ZonedDateTime
+import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
+import java.time.format.DateTimeFormatter
 
 
 object GlueApp {
@@ -34,6 +38,8 @@ object GlueApp {
              ("spark.task.maxFailures",  "100"),
           
             ("spark.cassandra.connection.config.profile.path",  driverConfFileName),
+            ("spark.sql.extensions", "com.datastax.spark.connector.CassandraSparkExtensions"),
+            ("directJoinSetting", "on"),
             
             ("spark.cassandra.output.consistency.level",  "LOCAL_QUORUM"),//WRITES
             ("spark.cassandra.input.consistency.level",  "LOCAL_ONE"),//READS
@@ -65,8 +71,8 @@ object GlueApp {
     
     val partitioner = session.execute("SELECT partitioner from system.local").one().getString("partitioner")
     
-    logger.info("Total number of seeds:" + peersCount);
-    logger.info("Configured partitioner:" + partitioner);
+    logger.info("Total number of seeds:" + peersCount)
+    logger.info("Configured partitioner:" + partitioner)
     
     if(peersCount == 0){
        throw new Exception("No system peers found. Check required permissions to read from the system.peers table. If using VPCE check permissions for describing VPCE endpoints. https://docs.aws.amazon.com/keyspaces/latest/devguide/vpc-endpoints.html")
@@ -80,13 +86,18 @@ object GlueApp {
     val keyspaceName = args("KEYSPACE_NAME")
     val backupS3 = args("S3_URI")
     val backupFormat = args("FORMAT")
-
+    
     val tableDf = sparkSession.read
       .format("org.apache.spark.sql.cassandra")
       .options(Map( "table" -> tableName, "keyspace" -> keyspaceName))
       .load()
 
-    tableDf.write.format(backupFormat).mode(SaveMode.ErrorIfExists).save(backupS3)
+    //eport table to folder s3://s3uri/keyspace/table/snapshot/timestamp/
+    val now = ZonedDateTime.now( ZoneOffset.UTC ).truncatedTo( ChronoUnit.MINUTES ).format( DateTimeFormatter.ISO_DATE_TIME )
+    
+    val fullbackuplocation = backupS3 + keyspaceName + "/" + tableName + "/snapshot/" + now + "/"
+    
+    tableDf.write.format(backupFormat).mode(SaveMode.ErrorIfExists).save(fullbackuplocation)
 
     Job.commit()
   }
