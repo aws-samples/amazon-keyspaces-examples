@@ -38,6 +38,9 @@ use the following scripts to create keyspace and table used in this example or c
 ## Sigv4 Connection
  For enhanced security, we recommend to create IAM access keys for IAM users and roles that are used across all AWS services. The Amazon Keyspaces SigV4 authentication plugin for Cassandra client drivers enables you to authenticate calls to Amazon Keyspaces using IAM access keys instead of user name and password. The sigv4 settings can be found in the ``keyspaces-application.conf```
 
+## Using Projections
+As a best practice, we recommend projecting all columns of interest in your prepared statements ```(SELECT user, fname, lname FROM user)``` rather than relying on ```SELECT *```. Both the driver and Amazon Keyspaces maintain a mapping of PreparedStatement queries to their metadata. When a table is altered there is currently no way for Amazon Keyspaces to invalidate or change the schema metadata. As a result the driver is unable to react to these changes and will not be able to correctly read rows after a schema change is made. Further, the use of the ``` @Query``` annotation can create a query method that can then be used to return projections. This type of query method can be found in ```UserRepository.java```. 
+
  ## Further Reading
 
  The documentation for the AWS SigV4 Auth Plugin for Cassandra can be found at
