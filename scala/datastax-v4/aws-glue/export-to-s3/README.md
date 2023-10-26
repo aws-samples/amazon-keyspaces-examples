@@ -9,7 +9,6 @@ The following script sets up AWS Glue job to export a Keyspaces table to S3. The
 * PARENT_STACK_NAME is the stack name used to create the spark cassandra connector with Glue. [setup script](../)
 * EXPORT_STACK_NAME is the stack name used to create export glue job. 
 * KEYSPACE_NAME and TABLE_NAME Keyspaces and table is the fully qualified name of the table you wish to export. 
-
 * FORMAT can be json, csv, or parquet. parquet is recommended for ease of use with data loading, transformations, and using exports with Athena.
 
 ```shell

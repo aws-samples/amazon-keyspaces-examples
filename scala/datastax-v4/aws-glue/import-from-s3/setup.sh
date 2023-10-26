@@ -8,7 +8,7 @@ FORMAT=${5:-parquet}
 STACK_NAME="${2:-$PARENT_STACK_NAME-import}"
 
 echo "Parent stack used: ${PARENT_STACK_NAME}"
-echo "import stack used: ${STACK_NAME}"
+echo "stack name used: ${STACK_NAME}"
 echo "Keyspace used used: ${KEYSPACE_NAME}"
 echo "Table used: ${TABLE_NAME}"
 echo "Fornat used: ${FORMAT}"
@@ -16,7 +16,7 @@ echo "Fornat used: ${FORMAT}"
 
 export KEYSPACES_GLUE_BUCKET=$(aws cloudformation describe-stacks --query "Stacks[?StackName==\`$PARENT_STACK_NAME\`][].Outputs[?ExportName==\`KeyspacesBucketNameExport-$PARENT_STACK_NAME\`]".OutputValue --output text)
 
-echo "Moving import script to bucket ${KEYSPACES_GLUE_BUCKET}"
+echo "Moving script to bucket ${KEYSPACES_GLUE_BUCKET}"
 
 aws s3api put-object --bucket $KEYSPACES_GLUE_BUCKET --key scripts/import-sample.scala --body import-sample.scala || exit 1
 
