@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: 'Create Export Glue job from S3 to Amazon Keyspaces'
+Description: 'Create Export Glue job from Amazon Keyspaces to S3'
 Parameters:
   KeyspaceName: 
       NoEcho: false
@@ -83,7 +83,7 @@ Resources:
         "--class": "GlueApp"
       #Connections: 
       #  ConnectionsList
-      Description: 'export from s3'
+      Description: 'export to s3'
       #ExecutionClass: String
       #ExecutionProperty: 
         #ExecutionProperty
@@ -91,7 +91,7 @@ Resources:
       #LogUri: String
       #MaxCapacity: Double
       #MaxRetries: Double
-      Name: !Sub ['AmazonKeyspacesExportFromS3-${STACKNAME}', STACKNAME: !Ref AWS::StackName]
+      Name: !Sub ['AmazonKeyspacesExportToS3-${STACKNAME}', STACKNAME: !Ref AWS::StackName]
       #NonOverridableArguments: Json
       #NotificationProperty: 
       #NotificationProperty

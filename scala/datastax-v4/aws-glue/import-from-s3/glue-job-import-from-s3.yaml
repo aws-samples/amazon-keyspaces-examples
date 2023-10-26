@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: 'Create Export Glue job from S3 to Amazon Keyspaces'
+Description: 'Create Import Glue job from S3 to Amazon Keyspaces'
 Parameters:
   KeyspaceName: 
       NoEcho: false
@@ -24,7 +24,7 @@ Parameters:
       MaxLength: 48
   FORMAT:
       NoEcho: false
-      Description: Format used for export
+      Description: Format used for source data
       Type: String
       Default: parquet
       MinLength: 3
@@ -38,7 +38,7 @@ Resources:
       Command:
         Name: glueetl
         ScriptLocation: !Sub 
-        - "s3://${IMPORTBUCKETNAME}/scripts/export-sample.scala"
+        - "s3://${IMPORTBUCKETNAME}/scripts/import-sample.scala"
         - IMPORTBUCKETNAME: 
             Fn::ImportValue: 
               !Sub 'KeyspacesBucketNameExport-${ParentStack}'
@@ -66,15 +66,15 @@ Resources:
         "--write-shuffle-files-to-s3": "true"
         "--write-shuffle-spills-to-s3": "true"
         "--TempDir": !Sub 
-        - 's3://${IMPORTBUCKETNAME}/shuffle-space/export-sample/'
+        - 's3://${IMPORTBUCKETNAME}/shuffle-space/import-sample/'
         - IMPORTBUCKETNAME: 
             Fn::ImportValue:
               !Sub 'KeyspacesBucketNameExport-${ParentStack}'
-        "--FORMAT": "${FORMAT}"
+        "--FORMAT": !Sub '${FORMAT}'
         "--KEYSPACE_NAME": !Sub '${KeyspaceName}'
         "--TABLE_NAME": !Sub '${TableName}'
         "--S3_URI": !Sub 
-          - 's3://${IMPORTBUCKETNAME}/export/${KeyspaceName}/${TableName}/full/'
+          - 's3://${IMPORTBUCKETNAME}/export/'
           - IMPORTBUCKETNAME:
               Fn::ImportValue:
                 !Sub 'KeyspacesBucketNameExport-${ParentStack}'
@@ -83,7 +83,7 @@ Resources:
         "--class": "GlueApp"
       #Connections: 
       #  ConnectionsList
-      Description: 'export from s3'
+      Description: 'import to s3'
       #ExecutionClass: String
       #ExecutionProperty: 
         #ExecutionProperty
@@ -91,7 +91,7 @@ Resources:
       #LogUri: String
       #MaxCapacity: Double
       #MaxRetries: Double
-      Name: !Sub ['AmazonKeyspacesExportFromS3-${STACKNAME}', STACKNAME: !Ref AWS::StackName]
+      Name: !Sub ['AmazonKeyspacesImportFromS3-${STACKNAME}', STACKNAME: !Ref AWS::StackName]
       #NonOverridableArguments: Json
       #NotificationProperty: 
       #NotificationProperty

@@ -35,21 +35,22 @@ object GlueApp {
   val conf = new SparkConf()
       .setAll(
        Seq(
-           ("spark.task.maxFailures",  "10"),
-             
+           ("spark.task.maxFailures",  "100"),
           
-          ("spark.cassandra.connection.config.profile.path",  driverConfFileName),
-          ("spark.cassandra.query.retry.count", "1000"),
-          ("spark.cassandra.output.consistency.level",  "LOCAL_QUORUM"),//WRITES
-          ("spark.cassandra.input.consistency.level",  "LOCAL_ONE"),//READS
+            ("spark.cassandra.connection.config.profile.path",  driverConfFileName),
+            ("spark.sql.extensions", "com.datastax.spark.connector.CassandraSparkExtensions"),
+            ("directJoinSetting", "on"),
+            
+            ("spark.cassandra.output.consistency.level",  "LOCAL_QUORUM"),//WRITES
+            ("spark.cassandra.input.consistency.level",  "LOCAL_ONE"),//READS
 
-          ("spark.cassandra.sql.inClauseToJoinConversionThreshold", "0"),
-          ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
-          ("spark.cassandra.concurrent.reads", "512"),
+            ("spark.cassandra.sql.inClauseToJoinConversionThreshold", "0"),
+            ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
+            ("spark.cassandra.concurrent.reads", "50"),
 
-          ("spark.cassandra.output.concurrent.writes", "5"),
-          ("spark.cassandra.output.batch.grouping.key", "none"),
-          ("spark.cassandra.output.batch.size.rows", "1")
+            ("spark.cassandra.output.concurrent.writes", "5"),
+            ("spark.cassandra.output.batch.grouping.key", "none"),
+            ("spark.cassandra.output.batch.size.rows", "1")
       ))
 
     val spark: SparkContext = new SparkContext(conf)
@@ -92,6 +93,7 @@ object GlueApp {
    //Data exported from another database or Cassandra may be ordered by primary key.	
    //With Amazon Keyspaces you want to load data in a random way to use all available resources.	
    //The following command will randomize the data.	
+   //For larger tables seperate the shuffled step into a seperate job
    val shuffledData = orderedData.orderBy(rand())	
 
    shuffledData.write.format("org.apache.spark.sql.cassandra").mode("append").option("keyspace", keyspaceName).option("table", tableName).save()
