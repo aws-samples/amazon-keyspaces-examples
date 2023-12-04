@@ -22,15 +22,18 @@ Parameters:
       Default: aksglue1
       MinLength: 3
       MaxLength: 48
+  S3URI:
+      NoEcho: false
+      Description: folder to export
+      Type: String
+      Default: s3://mybucket/myexport   
   FORMAT:
       NoEcho: false
       Description: Format used for export
       Type: String
       Default: parquet
       MinLength: 3
-      MaxLength: 48
-
-      
+      MaxLength: 48   
 Resources:
   GlueJob:
     Type: AWS::Glue::Job
@@ -73,11 +76,7 @@ Resources:
         "--FORMAT": !Sub '${FORMAT}'
         "--KEYSPACE_NAME": !Sub '${KeyspaceName}'
         "--TABLE_NAME": !Sub '${TableName}'
-        "--S3_URI": !Sub 
-          - 's3://${IMPORTBUCKETNAME}/export/'
-          - IMPORTBUCKETNAME:
-              Fn::ImportValue:
-                !Sub 'KeyspacesBucketNameExport-${ParentStack}'
+        "--S3_URI": !Sub '${S3URI}'
         "--DRIVER_CONF": "keyspaces-application.conf"
         #"--DISTINCT_KEYS": "id,create_date"
         "--class": "GlueApp"
@@ -91,7 +90,7 @@ Resources:
       #LogUri: String
       #MaxCapacity: Double
       #MaxRetries: Double
-      Name: !Sub ['AmazonKeyspacesExportToS3-${STACKNAME}', STACKNAME: !Ref AWS::StackName]
+      Name: !Sub ['AmazonKeyspacesExportToS3-${STACKNAME}', STACKNAME: !Join [ "-", [!Ref ParentStack, !Ref  AWS::StackName]]]
       #NonOverridableArguments: Json
       #NotificationProperty: 
       #NotificationProperty

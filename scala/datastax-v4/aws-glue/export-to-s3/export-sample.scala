@@ -48,9 +48,11 @@ object GlueApp {
             ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
             ("spark.cassandra.concurrent.reads", "50"),
 
-            ("spark.cassandra.output.concurrent.writes", "5"),
+            ("spark.cassandra.output.concurrent.writes", "1"),
             ("spark.cassandra.output.batch.grouping.key", "none"),
-            ("spark.cassandra.output.batch.size.rows", "1")
+            ("spark.cassandra.output.batch.size.rows", "1"),
+            ("spark.cassandra.output.batch.size.rows", "1"),
+            ("spark.cassandra.output.ignoreNulls", "true")
         ))
 
 
@@ -92,10 +94,15 @@ object GlueApp {
       .options(Map( "table" -> tableName, "keyspace" -> keyspaceName))
       .load()
 
-    //eport table to folder s3://s3uri/keyspace/table/snapshot/timestamp/
-    val now = ZonedDateTime.now( ZoneOffset.UTC ).truncatedTo( ChronoUnit.MINUTES ).format( DateTimeFormatter.ISO_DATE_TIME )
-    
-    val fullbackuplocation = backupS3 + keyspaceName + "/" + tableName + "/snapshot/" + now + "/"
+    val now = ZonedDateTime.now( ZoneOffset.UTC )//.truncatedTo( ChronoUnit.MINUTES ).format( DateTimeFormatter.ISO_DATE_TIME )
+
+    val fullbackuplocation = backupS3 + 
+                             "/snapshot" +
+                             "/year="   +  "%04d".format(now.getYear()) +
+                             "/month="  +  "%02d".format(now.getMonthValue()) + 
+                             "/day="    +  "%02d".format(now.getDayOfMonth()) +
+                             "/hour="   +  "%02d".format(now.getHour()) + 
+                             "/minute=" +  "%02d".format(now.getMinute())
     
     tableDf.write.format(backupFormat).mode(SaveMode.ErrorIfExists).save(fullbackuplocation)
 

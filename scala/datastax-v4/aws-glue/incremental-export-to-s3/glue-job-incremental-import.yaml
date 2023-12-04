@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: 'Create Import Glue job from S3 to Amazon Keyspaces'
+Description: 'Create Export Glue job from Amazon Keyspaces to S3'
 Parameters:
   KeyspaceName: 
       NoEcho: false
@@ -24,18 +24,21 @@ Parameters:
       MaxLength: 48
   S3URI:
       NoEcho: false
-      Description: folder to import
+      Description: Format used for export
       Type: String
-      Default: s3://mybucket/myexport
+      Default: s://someuri
   FORMAT:
       NoEcho: false
-      Description: Format used for source data
+      Description: Format used for export
       Type: String
       Default: parquet
       MinLength: 3
       MaxLength: 48
-
-      
+  DISTINCTKEYS:
+      NoEcho: false
+      Description: Format used for export
+      Type: String
+      Default: pk,ck
 Resources:
   GlueJob:
     Type: AWS::Glue::Job
@@ -43,7 +46,7 @@ Resources:
       Command:
         Name: glueetl
         ScriptLocation: !Sub 
-        - "s3://${IMPORTBUCKETNAME}/scripts/import-sample.scala"
+        - "s3://${IMPORTBUCKETNAME}/scripts/incremental-import-sample.scala"
         - IMPORTBUCKETNAME: 
             Fn::ImportValue: 
               !Sub 'KeyspacesBucketNameExport-${ParentStack}'
@@ -71,7 +74,7 @@ Resources:
         "--write-shuffle-files-to-s3": "true"
         "--write-shuffle-spills-to-s3": "true"
         "--TempDir": !Sub 
-        - 's3://${IMPORTBUCKETNAME}/shuffle-space/import-sample/'
+        - 's3://${IMPORTBUCKETNAME}/shuffle-space/export-sample/'
         - IMPORTBUCKETNAME: 
             Fn::ImportValue:
               !Sub 'KeyspacesBucketNameExport-${ParentStack}'
@@ -80,11 +83,11 @@ Resources:
         "--TABLE_NAME": !Sub '${TableName}'
         "--S3_URI": !Sub '${S3URI}'
         "--DRIVER_CONF": "keyspaces-application.conf"
-        #"--DISTINCT_KEYS": "id,create_date"
+        "--DISTINCT_KEYS": !Sub "${DISTINCTKEYS}"
         "--class": "GlueApp"
       #Connections: 
       #  ConnectionsList
-      Description: 'import to s3'
+      Description: 'incremental export to s3'
       #ExecutionClass: String
       #ExecutionProperty: 
         #ExecutionProperty
@@ -92,7 +95,7 @@ Resources:
       #LogUri: String
       #MaxCapacity: Double
       #MaxRetries: Double
-      Name: !Sub ['AmazonKeyspacesImportFromS3-${STACKNAME}', STACKNAME: !Join [ "-", [!Ref ParentStack, !Ref  AWS::StackName]]]
+      Name: !Sub ['AmazonKeyspacesIncrementalImportToS3-${STACKNAME}', STACKNAME: !Join [ "-", [!Ref ParentStack, !Ref  AWS::StackName]]]
       #NonOverridableArguments: Json
       #NotificationProperty: 
       #NotificationProperty

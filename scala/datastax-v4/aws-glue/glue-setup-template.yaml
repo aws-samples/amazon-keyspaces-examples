@@ -38,6 +38,19 @@ Resources:
     Type: AWS::S3::Bucket
     Properties: 
       BucketName: !Sub '${KeyspacesBucketName}'
+  #Type: AWS::Glue::Connection
+  #Properties:
+  #  CatalogId: SparkCassandraConnector
+  #  ConnectionInput: 
+  #    SparkCassandraConnector
+  #      ConnectionProperties: ''
+  #ConnectionType: CUSTOM
+  #Description: Spark Cassandra Connector
+  #MatchCriteria: 
+  #  - String
+  #Name: Spark Cassandra Connector
+  #PhysicalConnectionRequirements: 
+   # PhysicalConnectionRequirements
 Outputs:
   KeyspacesGlueJobServiceRoleOutput:
     Description: Glue service role for glue jobs

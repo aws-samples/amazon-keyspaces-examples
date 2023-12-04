@@ -32,17 +32,23 @@ object GlueApp {
     val conf = new SparkConf()
         .setAll(
          Seq(
-            ("directJoinSetting", "off"),
+            ("spark.task.maxFailures",  "100"),
+          
             ("spark.cassandra.connection.config.profile.path",  driverConfFileName),
-            ("spark.cassandra.query.retry.count", "100"),
+            ("spark.sql.extensions", "com.datastax.spark.connector.CassandraSparkExtensions"),
+            ("directJoinSetting", "on"),
+            
+            ("spark.cassandra.output.consistency.level",  "LOCAL_QUORUM"),//WRITES
+            ("spark.cassandra.input.consistency.level",  "LOCAL_ONE"),//READS
 
             ("spark.cassandra.sql.inClauseToJoinConversionThreshold", "0"),
             ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
-            ("spark.cassandra.concurrent.reads", "512"),
+            ("spark.cassandra.concurrent.reads", "50"),
 
-            ("spark.cassandra.output.concurrent.writes", "15"),
+            ("spark.cassandra.output.concurrent.writes", "5"),
             ("spark.cassandra.output.batch.grouping.key", "none"),
-            ("spark.cassandra.output.batch.size.rows", "1")
+            ("spark.cassandra.output.batch.size.rows", "1"),
+            ("spark.cassandra.output.ignoreNulls", "true")
         ))
 
 

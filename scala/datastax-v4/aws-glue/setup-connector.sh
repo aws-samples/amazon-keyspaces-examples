@@ -17,6 +17,12 @@ if [ $# -gt 3 ]; then
     exit 1
 fi
 
+if ! command -v aws &> /dev/null
+then
+    echo "AWS CLI \"aws\" is not installed. aws is required for deploying artifacts to s3. See https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html "
+    exit 1
+fi
+
 if ! command -v git &> /dev/null
 then
     echo "Git \"git\" is not installed.  git is required for building Retry policy class. See https://git-scm.com/book/en/v2/Getting-Started-Installing-Git "
@@ -26,12 +32,6 @@ fi
 if ! command -v mvn &> /dev/null
 then
     echo "Maven \"mvn\" is not installed. mvn is required for building Retry policy class. See https://maven.apache.org/install.html "
-    exit 1
-fi
-
-if ! command -v aws &> /dev/null
-then
-    echo "AWS CLI \"aws\" is not installed. aws is required for deploying artifacts to s3. See https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html "
     exit 1
 fi
 

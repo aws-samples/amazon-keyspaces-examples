@@ -17,6 +17,10 @@ import com.datastax.spark.connector._
 import org.apache.spark.sql.cassandra._
 import com.datastax.spark.connector.cql._
 import com.datastax.oss.driver.api.core._
+import java.time.ZonedDateTime
+import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
+import java.time.format.DateTimeFormatter
     
 import org.apache.spark.sql.functions.rand
 
@@ -26,25 +30,31 @@ object GlueApp {
 
   def main(sysArgs: Array[String]) {
 
-  val args = GlueArgParser.getResolvedOptions(sysArgs, Seq("JOB_NAME", "KEYSPACE_NAME", "TABLE_NAME", "DRIVER_CONF", "FORMAT", "S3_URI","DISTINCT_KEYS", "TODAY_DATE", "YESTERDAY_DATE").toArray)
+  val args = GlueArgParser.getResolvedOptions(sysArgs, Seq("JOB_NAME", "KEYSPACE_NAME", "TABLE_NAME", "DRIVER_CONF", "FORMAT", "S3_URI","DISTINCT_KEYS", "PAST_URI", "CURRENT_URI").toArray)
 
   val driverConfFileName = args("DRIVER_CONF")
 
   val conf = new SparkConf()
       .setAll(
        Seq(
-           ("spark.task.maxFailures",  "10"),
+           ("spark.task.maxFailures",  "100"),
           
-          ("spark.cassandra.connection.config.profile.path",  driverConfFileName),
-          ("spark.cassandra.query.retry.count", "1000"),
+            ("spark.cassandra.connection.config.profile.path",  driverConfFileName),
+            ("spark.sql.extensions", "com.datastax.spark.connector.CassandraSparkExtensions"),
+            ("directJoinSetting", "on"),
+            
+            ("spark.cassandra.output.consistency.level",  "LOCAL_QUORUM"),//WRITES
+            ("spark.cassandra.input.consistency.level",  "LOCAL_ONE"),//READS
 
-          ("spark.cassandra.sql.inClauseToJoinConversionThreshold", "0"),
-          ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
-          ("spark.cassandra.concurrent.reads", "512"),
+            ("spark.cassandra.sql.inClauseToJoinConversionThreshold", "0"),
+            ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
+            ("spark.cassandra.concurrent.reads", "50"),
 
-          ("spark.cassandra.output.concurrent.writes", "8"),
-          ("spark.cassandra.output.batch.grouping.key", "none"),
-          ("spark.cassandra.output.batch.size.rows", "1")
+            ("spark.cassandra.output.concurrent.writes", "1"),
+            ("spark.cassandra.output.batch.grouping.key", "none"),
+            ("spark.cassandra.output.batch.size.rows", "1"),
+            ("spark.cassandra.output.batch.size.rows", "1"),
+            ("spark.cassandra.output.ignoreNulls", "true")
       ))
 
     val spark: SparkContext = new SparkContext(conf)
@@ -57,23 +67,38 @@ object GlueApp {
     
     val logger = new GlueLogger
     
+    val tableName = args("TABLE_NAME")
+    val keyspaceName = args("KEYSPACE_NAME")
     val backupFormat = args("FORMAT")
-    val s3bucketBackupsLocation = args("S3_URI")
-    val todayString = args("TODAY_DATE")
-    val yesterdayString = args("YESTERDAY_DATE")
+    val backupS3 = args("S3_URI")
+    val currentURI = args("CURRENT_URI")
+    val pastURI = args("PAST_URI")
     val distinctKeys = args("DISTINCT_KEYS").filterNot(_.isWhitespace).split(",")
     
     logger.info("distinctKeys: " + distinctKeys.mkString(", "))
 
-    val today = sparkSession.read.format(backupFormat).load(s3bucketBackupsLocation + '/' + todayString + "/full-snapshot/")    
+    val currentSnapshot = sparkSession.read.format(backupFormat).load(currentURI)    
       
-    val yesterday = sparkSession.read.format(backupFormat).load(s3bucketBackupsLocation + '/' + yesterdayString + "/full-snapshot") 
+    val pastSanpshot = sparkSession.read.format(backupFormat).load(pastURI) 
     
     import uk.co.gresearch.spark.diff._
     
-    val changeSinceYesterday =  yesterday.diff(today, distinctKeys:_*).filter($"diff" =!= "N")
+    val changeSinceYesterday =  pastSanpshot.diff(currentSnapshot, distinctKeys:_*).filter($"diff" =!= "N")
     
-    changeSinceYesterday.repartition(1).write.format(backupFormat).mode(SaveMode.ErrorIfExists).save(s3bucketBackupsLocation + '/' + todayString + "/incremental-snapshot/")
+    val now = ZonedDateTime.now( ZoneOffset.UTC )//.truncatedTo( ChronoUnit.MINUTES ).format( DateTimeFormatter.ISO_DATE_TIME )
+
+    val finalLocation = backupS3 + 
+                             "/incremental" +
+                             "/year="   +  "%04d".format(now.getYear()) +
+                             "/month="  +  "%02d".format(now.getMonthValue()) + 
+                             "/day="    +  "%02d".format(now.getDayOfMonth()) +
+                             "/hour="   +  "%02d".format(now.getHour()) + 
+                             "/minute=" +  "%02d".format(now.getMinute())
+    
+    changeSinceYesterday.write.format(backupFormat).mode(SaveMode.ErrorIfExists).save(finalLocation)
+
+
+    //changeSinceYesterday.repartition(1).write.format(backupFormat).mode(SaveMode.ErrorIfExists).save(s3bucketBackupsLocation)
     
     // I is INSERT
     // D is DELETE 

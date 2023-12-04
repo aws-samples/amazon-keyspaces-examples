@@ -23,7 +23,6 @@ import org.apache.spark.sql.functions.rand
 import com.amazonaws.services.glue.log.GlueLogger
 
 
-
 object GlueApp {
 
   def main(sysArgs: Array[String]) {
@@ -48,9 +47,10 @@ object GlueApp {
             ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
             ("spark.cassandra.concurrent.reads", "50"),
 
-            ("spark.cassandra.output.concurrent.writes", "5"),
+            ("spark.cassandra.output.concurrent.writes", "1"),
             ("spark.cassandra.output.batch.grouping.key", "none"),
-            ("spark.cassandra.output.batch.size.rows", "1")
+            ("spark.cassandra.output.batch.size.rows", "1"),
+            ("spark.cassandra.output.ignoreNulls", "true")
       ))
 
     val spark: SparkContext = new SparkContext(conf)
@@ -85,7 +85,6 @@ object GlueApp {
     val keyspaceName = args("KEYSPACE_NAME")
     val backupFormat = args("FORMAT")
     val s3bucketBackupsLocation = args("S3_URI")	
-
 
     val orderedData = sparkSession.read.format(backupFormat).load(s3bucketBackupsLocation)	
 
