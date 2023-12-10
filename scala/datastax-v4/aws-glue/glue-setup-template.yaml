@@ -33,6 +33,7 @@ Resources:
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/AmazonS3FullAccess
       - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
+      - arn:aws:iam::aws:policy/AWSGlueConsoleFullAccess
       - arn:aws:iam::aws:policy/AmazonKeyspacesFullAccess
   KeyspacesGlueBucket:
     Type: AWS::S3::Bucket
