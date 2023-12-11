@@ -35,6 +35,18 @@ Resources:
       - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
       - arn:aws:iam::aws:policy/AWSGlueConsoleFullAccess
       - arn:aws:iam::aws:policy/AmazonKeyspacesFullAccess
+      - arn:aws:iam::aws:policy/service-role/AWSGlueServiceNotebookRole
+      - arn:aws:iam::aws:policy/CloudWatchFullAccess
+      - arn:aws:iam::aws:policy/CloudWatchFullAccessV2
+      - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+      Policies:
+        - PolicyName: iampass
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 'iam:PassRole'
+                Resource: '*'
   KeyspacesGlueBucket:
     Type: AWS::S3::Bucket
     Properties: 
