@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myeksspring-deployment
+  namespace: my-eks-namespace
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mykeyspacessigv4springbootapp
+  template:
+    metadata:
+      labels:
+        app: mykeyspacessigv4springbootapp
+    spec:
+      serviceAccountName: my-eks-serviceaccount
+      containers:
+      - name: myksappcontainer
+        image: 123456789.dkr.ecr.us-east-1.amazonaws.com/mykeyspacessigv4springbootapp:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: CASSANDRA_HOST
+          value: "cassandra.us-east-1.amazonaws.com:9142"
+        - name: CASSANDRA_DC
+          value: "us-east-1"
+        - name: AWS_WEB_IDENTITY_TOKEN_FILE
+          value: /var/run/secrets/eks.amazonaws.com/serviceaccount/token
+        - name: AWS_ROLE_ARN
+          value: "arn:aws:iam::123456789:role/my-eks-role"
+        - name: AWS_REGION
+          value: "us-east-1"
+
