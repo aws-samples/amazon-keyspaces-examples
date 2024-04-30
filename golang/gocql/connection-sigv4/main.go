@@ -78,7 +78,9 @@ func main() {
 
 	// Perform Query
 	var keyspaceName string
-	iter := cassandraSession.Query("SELECT keyspace_name FROM system_schema.keyspaces;").Iter()
+	query := cassandraSession.Query("SELECT keyspace_name FROM system_schema.keyspaces;")
+        query.Idempotent(true)
+	iter := query.Iter()
 
 	defer iter.Close()
 
