@@ -23,7 +23,7 @@ session = cluster.connect()
 
 #Amazon Elasticache connection
 logging.basicConfig(level=logging.ERROR)
-redis = RedisCluster(startup_nodes=[{"host": "keyspaces-cache.ebnqkc.clustercfg.use1.cache.amazonaws.com",
+redis = RedisCluster(startup_nodes=[{"host": "YOUR_CLUSTER.clustercfg.use1.cache.amazonaws.com",
                                      "port": "6379"}], 
                      decode_responses=True,
                      skip_full_coverage_check=True)

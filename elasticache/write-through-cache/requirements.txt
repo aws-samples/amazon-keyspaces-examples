@@ -1,0 +1,4 @@
+cassandra-driver
+cassandra-sigv4
+redis-py-cluster
+boto3
