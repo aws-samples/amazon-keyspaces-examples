@@ -13,7 +13,7 @@ You should have the connection string for your Amazon Elasticache Redis cluster 
 
 You should have the keyspace name and table name for your Amazon Keyspaces resource which you will provide on line 36 and line 37  of write_through_caching_sample/ks_redis.py respectively.
 
-Sample data can be found at write_through_caching_sample/resources/ and can be loaded using [CQLSH] (https://docs.aws.amazon.com/keyspaces/latest/devguide/bulk-upload.html) or [DSBulk] (https://docs.aws.amazon.com/keyspaces/latest/devguide/dsbulk-upload.html).
+Sample data can be found at write_through_caching_sample/resources/ and can be loaded using [CQLSH](https://docs.aws.amazon.com/keyspaces/latest/devguide/bulk-upload.html) or [DSBulk](https://docs.aws.amazon.com/keyspaces/latest/devguide/dsbulk-upload.html).
 
 
 ### Running the sample
@@ -30,11 +30,11 @@ You can quickly get this to run by explicitly setting the following environment 
 
 From the project directory... 
 ```
-$ python3 -m pip install .
+pip install -r requirements.txt
 ```
 
 ### Testing
 From this project directory...
 ```
-$ python3 write_through_caching_sample/test_functions.py
+python3 write_through_caching_sample/test_functions.py
 ```
