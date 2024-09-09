@@ -69,13 +69,13 @@ def test_case_2():
     print("Test Case 2:")
     print("Get top 3 Must Read book awards for year 2021 in the Sci-Fi category")
     print("\n")
-    res=get_awards(["Must Read", 2021, "Sci-Fi", 23])
+    res=get_awards(["Must Read", 2021, "Sci-Fi", 3])
     print(res)
 
     #cache-hit - get awards from cache
     print("\n")
     print("Verify cache hit on subsequent query with same parameters:")
-    res=get_awards(["Must Read", 2021, "Sci-Fi", 23])
+    res=get_awards(["Must Read", 2021, "Sci-Fi", 3])
     print(res)
 
     #let the cache entry expire
@@ -86,13 +86,13 @@ def test_case_2():
     #cache miss - get award from DB and lazy load to cache
     print("\n")
     print("Entry expired in cache, awards expected to be fetched from DB.")
-    res=get_awards(["Must Read", 2021, "Sci-Fi", 23])
+    res=get_awards(["Must Read", 2021, "Sci-Fi", 3])
     print(res)
 
     #cache hit - get award from cache
     print("\n")
     print("Verify that awards are lazy loaded into cache:")
-    res=get_awards(["Must Read", 2021, "Sci-Fi", 23])
+    res=get_awards(["Must Read", 2021, "Sci-Fi", 3])
     print(res)
 
 test_case_1()
