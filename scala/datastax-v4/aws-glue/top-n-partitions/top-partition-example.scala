@@ -35,13 +35,14 @@ object GlueApp {
             ("spark.cassandra.connection.config.profile.path",  driverConfFileName),
             ("spark.cassandra.query.retry.count", "100"),
 
-            ("spark.cassandra.sql.inClauseToJoinConversionThreshold", "0"),
+             ("spark.cassandra.sql.inClauseToJoinConversionThreshold", "0"),
             ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
-            ("spark.cassandra.concurrent.reads", "512"),
+            ("spark.cassandra.concurrent.reads", "50"),
 
-            ("spark.cassandra.output.concurrent.writes", "15"),
+            ("spark.cassandra.output.concurrent.writes", "5"),
             ("spark.cassandra.output.batch.grouping.key", "none"),
-            ("spark.cassandra.output.batch.size.rows", "1")
+            ("spark.cassandra.output.batch.size.rows", "1"),
+            ("spark.cassandra.output.ignoreNulls", "true")
         ))
 
 
@@ -80,7 +81,9 @@ object GlueApp {
 
     val tableDf = sparkSession.read
       .format("org.apache.spark.sql.cassandra")
-      .options(Map( "table" -> tableName, "keyspace" -> keyspaceName))
+      .options(Map( "table" -> tableName, 
+                    "keyspace" -> keyspaceName,
+                    "pushdown" -> "false"))//set to true when executing against Apache Cassandra, false when working with Keyspaces
       .load()
 
     val minimumSize = args("MIN_SIZE").toInt

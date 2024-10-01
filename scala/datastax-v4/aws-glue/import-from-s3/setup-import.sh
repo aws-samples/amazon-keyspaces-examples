@@ -39,7 +39,7 @@ echo "S3URI used: ${S3URI}"
 
 echo "Moving script to bucket ${KEYSPACES_GLUE_BUCKET}"
 
-aws s3api put-object --bucket $KEYSPACES_GLUE_BUCKET --key scripts/import-sample.scala --body import-sample.scala || exit 1
+aws s3api put-object --bucket $KEYSPACES_GLUE_BUCKET --key scripts/$PARENT_STACK_NAME-$STACK_NAME-import.scala --body import-sample.scala || exit 1
 
 aws cloudformation create-stack --stack-name $STACK_NAME --parameters ParameterKey=ParentStack,ParameterValue=$PARENT_STACK_NAME ParameterKey=KeyspaceName,ParameterValue=$KEYSPACE_NAME ParameterKey=TableName,ParameterValue=$TABLE_NAME ParameterKey=S3URI,ParameterValue=$S3URI ParameterKey=FORMAT,ParameterValue=$FORMAT --template-body 'file://glue-job-import-from-s3.yaml' #--debug
 

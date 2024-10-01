@@ -43,7 +43,7 @@ Resources:
       Command:
         Name: glueetl
         ScriptLocation: !Sub 
-        - "s3://${IMPORTBUCKETNAME}/scripts/import-sample.scala"
+        - "s3://${IMPORTBUCKETNAME}/scripts/${ParentStack}-${AWS::StackName}-import.scala"
         - IMPORTBUCKETNAME: 
             Fn::ImportValue: 
               !Sub 'KeyspacesBucketNameExport-${ParentStack}'
@@ -103,4 +103,4 @@ Resources:
       #SecurityConfiguration: String
       #Tags: Json
       #Timeout: Integer
-      WorkerType: G.1X
+      WorkerType: G.2X

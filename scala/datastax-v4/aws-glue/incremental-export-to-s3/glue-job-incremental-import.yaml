@@ -106,4 +106,4 @@ Resources:
       #SecurityConfiguration: String
       #Tags: Json
       #Timeout: Integer
-      WorkerType: G.1X
+      WorkerType: G.2X

@@ -17,4 +17,4 @@ The following script sets up AWS Glue job to export a Keyspaces table to S3. The
 
 ```
 
-By default the export will copy data to S3 bucket specified in the parent stack in the format ```/export/keyspace/table/``` 
+By default the export will copy data to S3 bucket specified in the parent stack in the format ```/export/snapshot/keyspace/table/``` 

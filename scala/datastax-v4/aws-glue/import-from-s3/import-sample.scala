@@ -17,8 +17,7 @@ import com.datastax.spark.connector._
 import org.apache.spark.sql.cassandra._
 import com.datastax.spark.connector.cql._
 import com.datastax.oss.driver.api.core._
-    
-import org.apache.spark.sql.functions.rand
+import scala.util.Random
 
 import com.amazonaws.services.glue.log.GlueLogger
 
@@ -88,14 +87,20 @@ object GlueApp {
 
     val orderedData = sparkSession.read.format(backupFormat).load(s3bucketBackupsLocation)	
 
-   //You want randomize data before loading to maximize table throughput and avoid WriteThottleEvents	
-   //Data exported from another database or Cassandra may be ordered by primary key.	
-   //With Amazon Keyspaces you want to load data in a random way to use all available resources.	
-   //The following command will randomize the data.	
+   //You want randomize data before loading to maximize table throughput and avoid WriteThottleEvents   
+   //Data exported from another database or Cassandra may be ordered by primary key.    
+   //With Amazon Keyspaces you want to load data in a random way to use all available resources.    
+   //The following command will randomize the data. 
    //For larger tables seperate the shuffled step into a seperate job
-   val shuffledData = orderedData.orderBy(rand())	
+   def shufflePartition(rows: Iterator[Row]): Iterator[Row] = {
+       Random.shuffle(rows.toList).iterator
+   }
+   
+   val shuffledRDD = orderedData.rdd.mapPartitions(shufflePartition)
+   
+   val shuffledDF = sparkSession.createDataFrame(shuffledRDD, orderedData.schema)
 
-   shuffledData.write.format("org.apache.spark.sql.cassandra").mode("append").option("keyspace", keyspaceName).option("table", tableName).save()
+   shuffledDF.write.format("org.apache.spark.sql.cassandra").mode("append").option("keyspace", keyspaceName).option("table", tableName).save()
 
    Job.commit()
   }

@@ -5,21 +5,27 @@ Parameters:
       NoEcho: false
       Description: Cassandra Keyspace name
       Type: String
-      Default: mykeyspace
+      #Default: mykeyspace
       MinLength: 3
       MaxLength: 48
   TableName: 
       NoEcho: false
       Description: Cassandra Table name
       Type: String
-      Default: mytable
+      #Default: mytable
       MinLength: 3
+      MaxLength: 48
+  DistinctKeys: 
+      NoEcho: false
+      Description: Optional Paramter. Provide comma seperated list of keys (example "id,create_date") to perform distinct count. Leave blank to count every row. 
+      Type: String
+      Default: ""
       MaxLength: 48
   ParentStack:
       NoEcho: false
       Description: Stack used to setup the spark cassandra connector
       Type: String
-      Default: aksglue1
+      Default: aksglue
       MinLength: 3
       MaxLength: 48      
 Resources:
@@ -29,7 +35,7 @@ Resources:
       Command:
         Name: glueetl
         ScriptLocation: !Sub 
-        - "s3://${IMPORTBUCKETNAME}/scripts/count-example.scala"
+        - "s3://${IMPORTBUCKETNAME}/scripts/${ParentStack}-${AWS::StackName}-count.scala"
         - IMPORTBUCKETNAME: 
             Fn::ImportValue: 
               !Sub 'KeyspacesBucketNameExport-${ParentStack}'
@@ -64,7 +70,7 @@ Resources:
         "--KEYSPACE_NAME": !Sub '${KeyspaceName}'
         "--TABLE_NAME": !Sub '${TableName}'
         "--DRIVER_CONF": "keyspaces-application.conf"
-        #"--DISTINCT_KEYS": "id,create_date"
+        --DISTINCT_KEYS": !Sub '${DistinctKeys}'
         "--class": "GlueApp"
       #Connections: 
       #  ConnectionsList
@@ -87,4 +93,4 @@ Resources:
       #SecurityConfiguration: String
       #Tags: Json
       #Timeout: Integer
-      WorkerType: G.1X
+      WorkerType: G.2X

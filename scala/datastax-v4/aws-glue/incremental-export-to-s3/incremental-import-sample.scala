@@ -44,7 +44,7 @@ object GlueApp {
           ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
           ("spark.cassandra.concurrent.reads", "512"),
 
-          ("spark.cassandra.output.concurrent.writes", "15"),
+          ("spark.cassandra.output.concurrent.writes", "5"),
           ("spark.cassandra.output.batch.grouping.key", "none"),
           ("spark.cassandra.output.batch.size.rows", "1")
       ))

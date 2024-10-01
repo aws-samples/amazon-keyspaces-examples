@@ -23,7 +23,17 @@ object GlueApp {
 
   def main(sysArgs: Array[String]) {
 
-    val args = GlueArgParser.getResolvedOptions(sysArgs, Seq("JOB_NAME", "KEYSPACE_NAME", "TABLE_NAME", "DRIVER_CONF").toArray)
+    val requiredParams = Seq("JOB_NAME", "KEYSPACE_NAME", "TABLE_NAME", "DRIVER_CONF")
+    
+    val optionalParams = Seq("DISTINCT_KEYS")
+
+    // Build a list of optional parameters that exist in sysArgs
+    val validOptionalParams = optionalParams.filter(param => sysArgs.contains(s"--$param"))
+
+    // Combine required and valid optional parameters
+    val validParams = requiredParams ++ validOptionalParams
+
+    val args = GlueArgParser.getResolvedOptions(sysArgs, validParams.toArray)
 
     val driverConfFileName = args("DRIVER_CONF")
 
@@ -81,15 +91,33 @@ object GlueApp {
     //count rows
     val tableName = args("TABLE_NAME")
     val keyspaceName = args("KEYSPACE_NAME")
+    val distinctKeysCSV = args.getOrElse("DISTINCT_KEYS", "")
 
     val tableDf = sparkSession.read
       .format("org.apache.spark.sql.cassandra")
-      .options(Map( "table" -> tableName, "keyspace" -> keyspaceName))
+      .options(Map( "table" -> tableName, 
+                    "keyspace" -> keyspaceName, 
+                    "pushdown" -> "false"))//set to true when executing against Apache Cassandra, false when working with Keyspaces
       .load()
+       //.filter("my_column=='somevalue' AND my_othercolumn=='someothervalue'")
 
-    val total =  tableDf.toJavaRDD.count()
+    if (Option(distinctKeysCSV).exists(_.nonEmpty)) {
+      
+      val distinctKeys = distinctKeysCSV.filterNot(_.isWhitespace).split(",")
 
-    logger.info("Total number of rows in table:" + total)
+      val total = tableDf.select(distinctKeys.head, distinctKeys.tail:_*).distinct().count()
+
+      logger.info("Total number of distinct rows:" + total)
+
+    } else {
+      
+      val total =  tableDf.toJavaRDD.count()
+
+      logger.info("Total number of rows:" + total)
+    }
+    
+
+    
 
     Job.commit()
   }
