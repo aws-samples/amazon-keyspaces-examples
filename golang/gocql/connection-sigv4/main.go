@@ -1,3 +1,4 @@
+// snippet-start:[keyspaces.GO.connection.sigv4]
 package main
 
 import (
@@ -147,3 +148,4 @@ func (e *AmazonKeyspacesExponentialBackoffRetryPolicy) GetRetryType(err error) g
 func (e *AmazonKeyspacesExponentialBackoffRetryPolicy) napTime(attempts int) time.Duration {
 	return getExponentialTime(e.Min, e.Max, attempts)
 }
+// snippet-end:[keyspaces.GO.connection.sigv4]
