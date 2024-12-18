@@ -1,5 +1,5 @@
 ## Using Glue Top N partitions Example
-This example provides scala script for calculate the top partitions with the most rows. This is common utility in verifying data skew. You can use this with Amazon Keyspaces or self managed Apache Cassandra
+This example provides scala script for calculate the top partitions with the most rows. This is common utility in verifying data skew. You can use this with Amazon Keyspaces or self managed Apache Cassandra. 
 
 ## Prerequisites
 * Amazon Keyspaces table to perform Top N

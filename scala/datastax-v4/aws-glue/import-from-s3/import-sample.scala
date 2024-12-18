@@ -89,9 +89,10 @@ object GlueApp {
 
    //You want randomize data before loading to maximize table throughput and avoid WriteThottleEvents   
    //Data exported from another database or Cassandra may be ordered by primary key.    
-   //With Amazon Keyspaces you want to load data in a random way to use all available resources.    
+   //With Amazon Keyspaces you want to load data in a random way to use all available table resources.    
    //The following command will randomize the data. 
    //For larger tables seperate the shuffled step into a seperate job
+   
    def shufflePartition(rows: Iterator[Row]): Iterator[Row] = {
        Random.shuffle(rows.toList).iterator
    }

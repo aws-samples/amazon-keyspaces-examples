@@ -33,7 +33,7 @@ if [ -z "${KEYSPACES_GLUE_BUCKET}" ]; then
 	exit 1
 fi
 
-S3URI=${5:-s3://${KEYSPACES_GLUE_BUCKET}/export}
+S3URI=${5:-s3://${KEYSPACES_GLUE_BUCKET}}
 
 echo "S3URI used: ${S3URI}"
 
@@ -45,3 +45,7 @@ aws cloudformation create-stack --stack-name ${STACK_NAME} --parameters Paramete
 
 echo Waiting for CloudFormation stack to complete ...
 aws cloudformation wait stack-create-complete --stack-name ${STACK_NAME}  || exit 1 
+
+aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs" || exit 1 
+
+

@@ -100,7 +100,10 @@ object GlueApp {
 
     val now = ZonedDateTime.now( ZoneOffset.UTC )//.truncatedTo( ChronoUnit.MINUTES ).format( DateTimeFormatter.ISO_DATE_TIME )
 
-    val fullbackuplocation = backupS3 + 
+    val fullbackuplocation = backupS3 +
+                             "/export" + 
+                             "/" + keyspaceName +
+                             "/" + tableName +
                              "/snapshot" +
                              "/year="   +  "%04d".format(now.getYear()) +
                              "/month="  +  "%02d".format(now.getMonthValue()) + 

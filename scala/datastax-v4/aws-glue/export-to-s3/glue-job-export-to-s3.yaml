@@ -102,3 +102,9 @@ Resources:
       #Tags: Json
       #Timeout: Integer
       WorkerType: G.2X
+Outputs:
+  KeyspacesGlueJobName:
+    Description: Glue job id
+    Value: !Sub ['AmazonKeyspacesExportToS3-${STACKNAME}', STACKNAME: !Join [ "-", [!Ref ParentStack, !Ref  AWS::StackName]]]
+    Export:
+      Name: !Sub ['KeyspaceExportJobName-${STACKNAME}', STACKNAME: !Ref AWS::StackName]
