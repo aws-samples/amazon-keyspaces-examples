@@ -1,0 +1,132 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: 'Create bulk delete Glue job for Amazon Keyspaces'
+Parameters:
+  KeyspaceName: 
+      NoEcho: false
+      Description: Cassandra Keyspace name
+      Type: String
+      #Default: mykeyspace
+      MinLength: 3
+      MaxLength: 48
+  TableName: 
+      NoEcho: false
+      Description: Cassandra Table name
+      Type: String
+      #Default: mytable
+      MinLength: 3
+      MaxLength: 48
+  DistinctKeys: 
+      NoEcho: false
+      Description: Optional Paramter. Provide comma seperated list of keys (example "id,create_date") of distinct keys. For instance, you could delete by partition by using just the partition keys.  
+      Type: String
+      Default: ""
+      MaxLength: 48
+  S3URI:
+      NoEcho: false
+      Description: folder to export
+      Type: String
+      Default: s3://mybucket/myexport   
+  FORMAT:
+      NoEcho: false
+      Description: Format used for export
+      Type: String
+      Default: parquet
+      MinLength: 3
+      MaxLength: 48  
+  QueryFilter: 
+      NoEcho: false
+      Description: Optional Paramter. Provide Query Filter criteria  (example "my_column=='somevalue' AND my_othercolumn=='someothervalue'") 
+      Type: String
+      Default: ""
+      MaxLength: 48
+  ParentStack:
+      NoEcho: false
+      Description: Stack used to setup the spark cassandra connector
+      Type: String
+      Default: aksglue
+      MinLength: 3
+      MaxLength: 48  
+  
+Conditions:
+    IsQueryFilterEmpty: !Equals
+      - !Ref QueryFilter
+      - ""
+    IsDistinctKeysEmpty: !Equals
+      - !Ref DistinctKeys
+      - ""
+
+Resources:
+  GlueJob:
+    Type: AWS::Glue::Job
+    Properties: 
+      Command:
+        Name: glueetl
+        ScriptLocation: !Sub 
+        - "s3://${IMPORTBUCKETNAME}/scripts/${ParentStack}-${AWS::StackName}-bulk-delete-sample.scala"
+        - IMPORTBUCKETNAME: 
+            Fn::ImportValue: 
+              !Sub 'KeyspacesBucketNameExport-${ParentStack}'
+      DefaultArguments: 
+        "--job-language": "scala"
+        "--user-jars-first": "true"
+        "--extra-jars": !Sub 
+        - 's3://${IMPORTBUCKETNAME}/jars/spark-cassandra-connector-assembly_2.12-3.1.0.jar,s3://${IMPORTBUCKETNAME}/jars/aws-sigv4-auth-cassandra-java-driver-plugin-4.0.9-shaded.jar,s3://${IMPORTBUCKETNAME}/jars/spark-extension_2.12-2.8.0-3.4.jar,s3://${IMPORTBUCKETNAME}/jars/amazon-keyspaces-helpers-1.0-SNAPSHOT.jar'
+        - IMPORTBUCKETNAME:
+            Fn::ImportValue:
+              !Sub 'KeyspacesBucketNameExport-${ParentStack}'
+        "--extra-files": !Sub 
+        - 's3://${IMPORTBUCKETNAME}/conf/keyspaces-application.conf'
+        - IMPORTBUCKETNAME: 
+            Fn::ImportValue:
+              !Sub 'KeyspacesBucketNameExport-${ParentStack}'
+        "--enable-metrics": "true"
+        "--enable-continuous-cloudwatch-log": "true"
+        "--enable-spark-ui": "true"
+        "--spark-event-logs-path": !Sub 
+        - "s3://${IMPORTBUCKETNAME}/spark-logs/"
+        - IMPORTBUCKETNAME: 
+            Fn::ImportValue:
+              !Sub 'KeyspacesBucketNameExport-${ParentStack}'
+        "--write-shuffle-files-to-s3": "true"
+        "--write-shuffle-spills-to-s3": "true"
+        "--TempDir": !Sub 
+        - 's3://${IMPORTBUCKETNAME}/shuffle-space/bulk-delete-sample/'
+        - IMPORTBUCKETNAME: 
+            Fn::ImportValue:
+              !Sub 'KeyspacesBucketNameExport-${ParentStack}'
+        "--KEYSPACE_NAME": !Sub '${KeyspaceName}'
+        "--TABLE_NAME": !Sub '${TableName}'
+        "--DRIVER_CONF": "keyspaces-application.conf"
+        "--DISTINCT_KEYS": !If
+          - IsDistinctKeysEmpty
+          - !Ref "AWS::NoValue"
+          - !Sub '${DistinctKeys}'
+        "--QUERY_FILTER":  !If
+          - IsQueryFilterEmpty
+          - !Ref "AWS::NoValue"
+          - !Sub '${QueryFilter}'
+        "--FORMAT": !Sub '${FORMAT}'
+        "--S3_URI": !Sub '${S3URI}'
+        "--class": "GlueApp"
+      #Connections: 
+      #  ConnectionsList
+      Description: 'bulk delete rows in a Keyspaces table'
+      #ExecutionClass: String
+      #ExecutionProperty: 
+        #ExecutionProperty
+      GlueVersion: "3.0"
+      #LogUri: String
+      #MaxCapacity: Double
+      #MaxRetries: Double
+      Name: !Sub ['AmazonKeyspacesBulkDelete-${STACKNAME}', STACKNAME: !Ref AWS::StackName]
+      #NonOverridableArguments: Json
+      #NotificationProperty: 
+      #NotificationProperty
+      NumberOfWorkers: 2
+      Role: 
+        Fn::ImportValue:
+            !Sub 'KeyspacesGlueJobServiceRoleExport-${ParentStack}'
+      #SecurityConfiguration: String
+      #Tags: Json
+      #Timeout: Integer
+      WorkerType: G.2X
