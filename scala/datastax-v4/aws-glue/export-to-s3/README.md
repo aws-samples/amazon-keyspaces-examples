@@ -78,9 +78,9 @@ You can trigger this export regularly using a scheduled trigger.  Here is a simp
   --start-on-creation \
   --actions '[{
      "JobName": "AmazonKeyspacesExportToS3-aksglue-aksglue-export",
-     "WorkerType": "G.2X",
-     "NumberOfWorkers": 8,
      "Arguments": {
+       "--number-of-workers": "8",
+       "--worker-type": "G.2X",
        "--table_name": "transactions",
        "--keyspace_name": "aws"
      }
