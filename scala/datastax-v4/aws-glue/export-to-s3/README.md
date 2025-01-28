@@ -51,7 +51,7 @@ By default the export will copy data to S3 bucket specified in the parent stack 
 Running the job can be done through the AWS CLI. In the following example the command is running the job created in the previous step, but overrides the number of glue workers, worker type, and script arguments such as the table name. You can override any of the glue job parameters at run time and the default arguments. 
 
 ```shell
-aws-glue % aws glue start-job-run --job-name AmazonKeyspacesExportToS3-aksglue-aksglue-export --number-of-workers 8 --worker-type G.2X --arguments '{"--TABLE_NAME":"transactions"}'
+aws glue start-job-run --job-name AmazonKeyspacesExportToS3-aksglue-aksglue-export --number-of-workers 8 --worker-type G.2X --arguments '{"--TABLE_NAME":"transactions"}'
 ```
 
 Full list of aws cli arguments [start-job-run arguments](https://docs.aws.amazon.com/cli/latest/reference/glue/start-job-run.html)
@@ -78,9 +78,9 @@ You can trigger this export regularly using a scheduled trigger.  Here is a simp
   --start-on-creation \
   --actions '[{
      "JobName": "AmazonKeyspacesExportToS3-aksglue-aksglue-export",
-     "WorkerType": "G.2X",
-     "NumberOfWorkers": 8,
      "Arguments": {
+       "--number-of-workers": "8",
+       "--worker-type": "G.2X",
        "--table_name": "transactions",
        "--keyspace_name": "aws"
      }
