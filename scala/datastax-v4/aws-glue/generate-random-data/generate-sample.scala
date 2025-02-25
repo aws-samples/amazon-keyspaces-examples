@@ -71,7 +71,7 @@ object GlueApp {
     
 
     if(partitioner.equals("com.amazonaws.cassandra.DefaultPartitioner")){
-        throw new Exception("Sark requires the use of RandomPartitioner or Murmur3Partitioner. See Working with partioners in Amazon Keyspaces documentation. https://docs.aws.amazon.com/keyspaces/latest/devguide/working-with-partitioners.html")
+        throw new Exception("Spark requires the use of RandomPartitioner or Murmur3Partitioner. See Working with partitioners in Amazon Keyspaces documentation. https://docs.aws.amazon.com/keyspaces/latest/devguide/working-with-partitioners.html")
     }
 
     val tableName = args("TABLE_NAME")
