@@ -1,3 +1,2 @@
 scala/datastax-v4/aws-glue/dist/
-scala/datastax-v4/aws-glue/.DS_Store
-scala/datastax-v4/.DS_Store
+**/*.DS_Store
