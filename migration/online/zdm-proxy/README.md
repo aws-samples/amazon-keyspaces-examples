@@ -2,15 +2,21 @@
 
 This project extends the official [ ZDM Proxy](https://github.com/datastax/zdm-proxy) to support seamless **zero-downtime migration** from **Apache Cassandra** to **Amazon Keyspaces (for Apache Cassandra)** with AWS best practices. 
 
-It introduces key enhancements:
+The ZDM Proxy features:
+- Used to perform online migration from one Cassandra cluster to another.
+- Can perform dual writes without refactoring existing applications
+- Perform perform dual reads for query validation
+
+This repository introduces key enhancements for use with Amazon Web Services and Amazon Keyspaces:
 
 - A custom Docker image hosted in **Amazon ECR** for VPC-accessible deployments.
 - A **CloudFormation template** to deploy the proxy on **AWS Fargate**, ensuring a scalable, serverless, and secure setup within your existing AWS infrastructure.
+- customization to support keyspaces system tables. 
 
 
 The proxy is deployed with Amazon ECS on Fargate which can scale up and down based on application demand. The Network load balancer allows application traffic to be distributed across a number of ECS tasks. 
 
-![this screenshot](/aws-ecs-zdm.drawio.png)
+![this screenshot](aws-ecs-zdm.drawio.png)
 
 
 
@@ -31,26 +37,27 @@ The proxy is deployed with Amazon ECS on Fargate which can scale up and down bas
 
 - **VPCId**: ID of your target VPC.
 - **PrivateSubnetIds**: List of private subnet IDs.
-- **SecurityGroupId**: Security Group for the Network Load Balancer.
-- **RouteTableId**: Optional; for route management if using PrivateLink.
+- **SecurityGroupId**: Security Group for the Network Load Balancer, and the ECS cluster.
+- **RouteTableId**: Used for S3 gateway. 
 
 ### 🔄 Origin & Target Cassandra Config
 
 - **ZDMOriginContactPoints**, **ZDMTargetContactPoints**: IP/DNS for the clusters.
-- **ZDMOriginPort**, **ZDMTargetPort**: Usually 9042 for Cassandra, 9142 for Amazon Keyspaces.
-- **ZDMOriginUsername/Password**, **ZDMTargetUsername/Password**: Auth credentials.
+- **ZDMOriginPort**, **ZDMTargetPort**: Usually 9042 for Cassandra, always 9142 for Amazon Keyspaces.
+- **ZDMOriginUsername/Password**, **ZDMTargetUsername/Password**: Auth credentials. For Keyspaces see [Create service-specific credentials](https://docs.aws.amazon.com/keyspaces/latest/devguide/programmatic.credentials.ssc.html)
 
 ### ⚙️ Proxy Config
 
-- **ServiceReplicaCount**: Number of ECS tasks to launch.
-- **ZDMProxyPort**: Port for the proxy service. Default is `14002`.
+- **ServiceReplicaCount**: Number of ECS tasks to launch. 3 is a good start
+- **ZDMProxyPort**: Port for the proxy service and networkload blancer. Default is `14002`. Do not use 9142. 
 
 ---
 
 ## 📦 Deployment Instructions
 
-### 1. 🧱 Build and Push Image
+### 1. 🧱 Build and Push Image to Amazon Elastic Container Registery
 
+The following will download zdmproxy image, apply the best practices for Amazon Keyspaces captured in this projects [Dockerfile](DockerFile)
 ```bash
 ./move-docker-to-ecr.sh
 ```
@@ -64,16 +71,10 @@ Upload the `zdm-proxy-cloudformation.yaml` to S3 or the AWS Console and deploy i
 ## 🔐 Security and TLS
 
 - TLS is handled via Amazon Keyspaces' default requirement. The proxy ensures secure, in-transit communication.
+- If using TLS for self managed cassandra, include it in the DockerFile. 
 
 ---
 
-## ✅ Best Practices for Amazon Keyspaces
-
-- Uses **port 9142** for CQL over TLS as required by Amazon Keyspaces.
-- Supports **DNS-based discovery** of Amazon Keyspaces via `entrypoint.sh`.
-- Deployable **entirely within a VPC** for added security and compliance.
-
----
 
 ## 🧪 Testing & Validation
 
