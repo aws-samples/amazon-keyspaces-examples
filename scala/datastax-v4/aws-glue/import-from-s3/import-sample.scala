@@ -101,7 +101,16 @@ object GlueApp {
    
    val shuffledDF = sparkSession.createDataFrame(shuffledRDD, orderedData.schema)
 
-   shuffledDF.write.format("org.apache.spark.sql.cassandra").mode("append").option("keyspace", keyspaceName).option("table", tableName).save()
+   shuffledDF
+    .write
+    .format("org.apache.spark.sql.cassandra")
+    .mode("append")
+    .option("keyspace", keyspaceName)
+    .option("table", tableName)
+   //.option("ttl", "ttlCol") //Use the values in ttlCol as the TTL for these inserts.
+                              //you can also provide fixed number '100'
+                              //to use this feature you must enable ttl on the keyspaces table. 
+    .save()
 
    Job.commit()
   }
