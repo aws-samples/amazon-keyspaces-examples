@@ -321,8 +321,6 @@ Resources:
           ContainerName: zdm-proxy
           ContainerPort: !Ref ZDMProxyPort
   
-
-  Resources:
   ECSTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
