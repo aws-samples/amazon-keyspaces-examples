@@ -1,0 +1,77 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: 'IAM Role to get started with AWS Glue and Amazon Keyspaces'
+Parameters:
+  KeyspacesBucketName: 
+      NoEcho: false
+      Description: S3 bucket name to store artifacts
+      Type: String
+      Default: 'amazon-keyspaces-glue-mustbeunique'
+      MinLength: 3
+      MaxLength: 63
+      AllowedPattern: (?!(^xn--|.+-s3alias$))^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$
+  KeyspacesGlueServiceRoleName: 
+      NoEcho: false
+      Description: S3 bucket name to store artifacts
+      Type: String
+      Default: 'amazon-keyspaces-glue-servicerole'
+      MinLength: 3
+      MaxLength: 63
+      AllowedPattern: (?!(^xn--|.+-s3alias$))^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$
+Resources:
+  KeyspacesGlueJobServiceRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Sub '${KeyspacesGlueServiceRoleName}'
+      Description: 'AWS Glue service role to import and export data from Amazon Keyspaces'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: glue.amazonaws.com
+          Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AmazonS3FullAccess
+      - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
+      - arn:aws:iam::aws:policy/AWSGlueConsoleFullAccess
+      - arn:aws:iam::aws:policy/AmazonKeyspacesFullAccess
+      - arn:aws:iam::aws:policy/service-role/AWSGlueServiceNotebookRole
+      - arn:aws:iam::aws:policy/CloudWatchFullAccess
+      - arn:aws:iam::aws:policy/CloudWatchFullAccessV2
+      - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+      Policies:
+        - PolicyName: iampass
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 'iam:PassRole'
+                Resource: '*'
+  KeyspacesGlueBucket:
+    Type: AWS::S3::Bucket
+    Properties: 
+      BucketName: !Sub '${KeyspacesBucketName}'
+  #Type: AWS::Glue::Connection
+  #Properties:
+  #  CatalogId: SparkCassandraConnector
+  #  ConnectionInput: 
+  #    SparkCassandraConnector
+  #      ConnectionProperties: ''
+  #ConnectionType: CUSTOM
+  #Description: Spark Cassandra Connector
+  #MatchCriteria: 
+  #  - String
+  #Name: Spark Cassandra Connector
+  #PhysicalConnectionRequirements: 
+   # PhysicalConnectionRequirements
+Outputs:
+  KeyspacesGlueJobServiceRoleOutput:
+    Description: Glue service role for glue jobs
+    Value: !Ref KeyspacesGlueJobServiceRole
+    Export:
+      Name: !Sub ['KeyspacesGlueJobServiceRoleExport-${STACKNAME}', STACKNAME: !Ref AWS::StackName]
+  KeyspacesBucketNameOutput:
+    Description: S3 Bucket for glue jobs
+    Value: !Ref KeyspacesBucketName
+    Export:
+      Name: !Sub ['KeyspacesBucketNameExport-${STACKNAME}', STACKNAME: !Ref AWS::StackName]
