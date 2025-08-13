@@ -1,0 +1,368 @@
+-- Sample Data: Market Analytics Time Series
+USE real_estate;
+
+-- Market data for Seattle Capitol Hill (98102) - Single Family Homes
+INSERT INTO market_analytics (
+    area_code,
+    date,
+    property_type,
+    avg_price,
+    median_price,
+    avg_price_per_sqft,
+    total_listings,
+    new_listings,
+    closed_sales,
+    pending_sales,
+    avg_days_on_market,
+    inventory_months,
+    market_stats
+) VALUES (
+    '98102',
+    '2024-07-01',
+    'single_family',
+    2650000,
+    2450000,
+    625.50,
+    45,
+    8,
+    12,
+    6,
+    52,
+    3.2,
+    {
+        days_on_market: 52,
+        listing_views: 2500,
+        showing_count: 20,
+        offer_count: 2,
+        market_temperature: 'balanced',
+        price_trend_30_days: -1.2,
+        price_trend_90_days: 2.1,
+        price_trend_1_year: 5.8,
+        comparable_sales_count: 15,
+        inventory_level: 'normal',
+        absorption_rate: 3.2,
+        median_dom_area: 52,
+        price_per_sqft_area: 625.50,
+        market_velocity: 'normal'
+    }
+);
+
+INSERT INTO market_analytics (
+    area_code,
+    date,
+    property_type,
+    avg_price,
+    median_price,
+    avg_price_per_sqft,
+    total_listings,
+    new_listings,
+    closed_sales,
+    pending_sales,
+    avg_days_on_market,
+    inventory_months,
+    market_stats
+) VALUES (
+    '98102',
+    '2024-06-01',
+    'single_family',
+    2580000,
+    2380000,
+    618.25,
+    48,
+    12,
+    10,
+    8,
+    58,
+    3.8,
+    {
+        days_on_market: 58,
+        listing_views: 2200,
+        showing_count: 18,
+        offer_count: 1,
+        market_temperature: 'balanced',
+        price_trend_30_days: 0.8,
+        price_trend_90_days: 1.5,
+        price_trend_1_year: 4.2,
+        comparable_sales_count: 12,
+        inventory_level: 'normal',
+        absorption_rate: 3.8,
+        median_dom_area: 58,
+        price_per_sqft_area: 618.25,
+        market_velocity: 'normal'
+    }
+);
+
+-- Market data for Seattle Downtown (98101) - Condos
+INSERT INTO market_analytics (
+    area_code,
+    date,
+    property_type,
+    avg_price,
+    median_price,
+    avg_price_per_sqft,
+    total_listings,
+    new_listings,
+    closed_sales,
+    pending_sales,
+    avg_days_on_market,
+    inventory_months,
+    market_stats
+) VALUES (
+    '98101',
+    '2024-07-01',
+    'condo',
+    1180000,
+    1050000,
+    685.25,
+    78,
+    15,
+    22,
+    12,
+    28,
+    1.8,
+    {
+        days_on_market: 28,
+        listing_views: 1800,
+        showing_count: 25,
+        offer_count: 3,
+        market_temperature: 'hot',
+        price_trend_30_days: 4.2,
+        price_trend_90_days: 6.8,
+        price_trend_1_year: 9.2,
+        comparable_sales_count: 25,
+        inventory_level: 'low',
+        absorption_rate: 1.8,
+        median_dom_area: 28,
+        price_per_sqft_area: 685.25,
+        market_velocity: 'fast'
+    }
+);
+
+INSERT INTO market_analytics (
+    area_code,
+    date,
+    property_type,
+    avg_price,
+    median_price,
+    avg_price_per_sqft,
+    total_listings,
+    new_listings,
+    closed_sales,
+    pending_sales,
+    avg_days_on_market,
+    inventory_months,
+    market_stats
+) VALUES (
+    '98101',
+    '2024-06-01',
+    'condo',
+    1125000,
+    995000,
+    672.80,
+    82,
+    18,
+    20,
+    15,
+    32,
+    2.1,
+    {
+        days_on_market: 32,
+        listing_views: 1650,
+        showing_count: 22,
+        offer_count: 2,
+        market_temperature: 'hot',
+        price_trend_30_days: 3.8,
+        price_trend_90_days: 5.2,
+        price_trend_1_year: 7.8,
+        comparable_sales_count: 22,
+        inventory_level: 'low',
+        absorption_rate: 2.1,
+        median_dom_area: 32,
+        price_per_sqft_area: 672.80,
+        market_velocity: 'fast'
+    }
+);
+
+-- Market data for Bellevue (98008) - Single Family Homes
+INSERT INTO market_analytics (
+    area_code,
+    date,
+    property_type,
+    avg_price,
+    median_price,
+    avg_price_per_sqft,
+    total_listings,
+    new_listings,
+    closed_sales,
+    pending_sales,
+    avg_days_on_market,
+    inventory_months,
+    market_stats
+) VALUES (
+    '98008',
+    '2024-07-01',
+    'single_family',
+    925000,
+    850000,
+    285.75,
+    32,
+    6,
+    8,
+    4,
+    35,
+    2.8,
+    {
+        days_on_market: 35,
+        listing_views: 1200,
+        showing_count: 15,
+        offer_count: 2,
+        market_temperature: 'balanced',
+        price_trend_30_days: 1.2,
+        price_trend_90_days: 2.8,
+        price_trend_1_year: 6.5,
+        comparable_sales_count: 18,
+        inventory_level: 'normal',
+        absorption_rate: 2.8,
+        median_dom_area: 35,
+        price_per_sqft_area: 285.75,
+        market_velocity: 'normal'
+    }
+);
+
+-- Market data for Seattle Columbia City (98144) - Multi-Family
+INSERT INTO market_analytics (
+    area_code,
+    date,
+    property_type,
+    avg_price,
+    median_price,
+    avg_price_per_sqft,
+    total_listings,
+    new_listings,
+    closed_sales,
+    pending_sales,
+    avg_days_on_market,
+    inventory_months,
+    market_stats
+) VALUES (
+    '98144',
+    '2024-07-01',
+    'multi_family',
+    685000,
+    625000,
+    295.50,
+    18,
+    2,
+    3,
+    1,
+    78,
+    4.2,
+    {
+        days_on_market: 78,
+        listing_views: 450,
+        showing_count: 8,
+        offer_count: 0,
+        market_temperature: 'cool',
+        price_trend_30_days: -0.8,
+        price_trend_90_days: 1.2,
+        price_trend_1_year: 4.8,
+        comparable_sales_count: 8,
+        inventory_level: 'high',
+        absorption_rate: 4.2,
+        median_dom_area: 78,
+        price_per_sqft_area: 295.50,
+        market_velocity: 'slow'
+    }
+);
+
+-- Historical data for trend analysis (98101 condos - May 2024)
+INSERT INTO market_analytics (
+    area_code,
+    date,
+    property_type,
+    avg_price,
+    median_price,
+    avg_price_per_sqft,
+    total_listings,
+    new_listings,
+    closed_sales,
+    pending_sales,
+    avg_days_on_market,
+    inventory_months,
+    market_stats
+) VALUES (
+    '98101',
+    '2024-05-01',
+    'condo',
+    1085000,
+    965000,
+    658.40,
+    85,
+    20,
+    18,
+    18,
+    35,
+    2.4,
+    {
+        days_on_market: 35,
+        listing_views: 1500,
+        showing_count: 20,
+        offer_count: 2,
+        market_temperature: 'warm',
+        price_trend_30_days: 2.8,
+        price_trend_90_days: 4.2,
+        price_trend_1_year: 6.8,
+        comparable_sales_count: 20,
+        inventory_level: 'normal',
+        absorption_rate: 2.4,
+        median_dom_area: 35,
+        price_per_sqft_area: 658.40,
+        market_velocity: 'normal'
+    }
+);
+
+-- Historical data (98102 single family - May 2024)
+INSERT INTO market_analytics (
+    area_code,
+    date,
+    property_type,
+    avg_price,
+    median_price,
+    avg_price_per_sqft,
+    total_listings,
+    new_listings,
+    closed_sales,
+    pending_sales,
+    avg_days_on_market,
+    inventory_months,
+    market_stats
+) VALUES (
+    '98102',
+    '2024-05-01',
+    'single_family',
+    2520000,
+    2320000,
+    608.75,
+    52,
+    10,
+    8,
+    10,
+    62,
+    4.2,
+    {
+        days_on_market: 62,
+        listing_views: 2000,
+        showing_count: 16,
+        offer_count: 1,
+        market_temperature: 'cool',
+        price_trend_30_days: -0.5,
+        price_trend_90_days: 0.8,
+        price_trend_1_year: 3.2,
+        comparable_sales_count: 10,
+        inventory_level: 'high',
+        absorption_rate: 4.2,
+        median_dom_area: 62,
+        price_per_sqft_area: 608.75,
+        market_velocity: 'slow'
+    }
+);
