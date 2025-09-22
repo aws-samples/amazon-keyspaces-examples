@@ -49,7 +49,9 @@ object GlueApp {
             ("spark.cassandra.output.concurrent.writes", "1"),
             ("spark.cassandra.output.batch.grouping.key", "none"),
             ("spark.cassandra.output.batch.size.rows", "1"),
-            ("spark.cassandra.output.ignoreNulls", "true")
+            ("spark.cassandra.output.ignoreNulls", "true"),
+            ("spark.cassandra.output.ifNotExists", "false")
+            
       ))
 
     val spark: SparkContext = new SparkContext(conf)
