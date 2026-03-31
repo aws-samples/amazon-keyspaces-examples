@@ -1,7 +1,7 @@
 FROM datastax/zdm-proxy:latest
 
 # Install tools
-RUN apk add --no-cache socat bind-tools curl
+RUN apk add --no-cache socat bind-tools curl openssl
 
 RUN mkdir -p /app
 

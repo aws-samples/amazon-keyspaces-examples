@@ -16,7 +16,7 @@ fi
 echo "✅ Resolved $ENPOINT → $CASSANDRA_IP"
 
 # Start local proxy (e.g. socat)
-socat TCP-LISTEN:9142,bind=127.0.0.1,reuseaddr,fork TCP:$CASSANDRA_IP:$CASSANDRA_PORT &
+socat TCP-LISTEN:9142,bind=127.0.0.1,reuseaddr,fork SSL:$CASSANDRA_IP:$CASSANDRA_PORT,verify=1,cafile=/app/sf-class2-root.crt,openssl-commonname=$ENPOINT &
 
 if [ -n "$AWS_NLB_DNS" ]; then
   echo "✅ AWS_NLB_DNS is set: $AWS_NLB_DNS"
