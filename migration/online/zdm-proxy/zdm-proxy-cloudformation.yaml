@@ -11,7 +11,7 @@ Metadata:
           - PrivateSubnetIds
           - SecurityGroupId
           - RouteTableId
-      
+
       - Label:
           default: "Origin Cassandra Configuration"
         Parameters:
@@ -19,11 +19,10 @@ Metadata:
           - ZDMOriginUsername
           - ZDMOriginPassword
           - ZDMOriginPort
-      
+
       - Label:
-          default: "Target Cassandra Configuration"
+          default: "Target Keyspaces Configuration"
         Parameters:
-          - ZDMTargetContactPoints
           - ZDMTargetUsername
           - ZDMTargetPassword
           - ZDMTargetPort
@@ -34,7 +33,7 @@ Metadata:
           - ServiceReplicaCount
           - ZDMProxyPort
           - ECRImage
-    
+
 Parameters:
   VPCId:
     Type: AWS::EC2::VPC::Id
@@ -46,22 +45,21 @@ Parameters:
 
   SecurityGroupId:
     Type: AWS::EC2::SecurityGroup::Id
-    Description: Security group ID for the Network Load Balancer. Accept traffic from your application
-  
+    Description: Security group ID for the NLB and ECS tasks
+
   RouteTableId:
     Type: String
-    Description: ID of the existing Route Table associated with private subnets
-    Default: rtb-example
-    
+    Description: Route table ID associated with private subnets (for S3 gateway endpoint)
+
   ZDMOriginContactPoints:
     Type: String
-    Description: Contact points for the origin Cassandra cluster
+    Description: Comma-separated contact points for the origin Cassandra cluster
     Default: 10.0.1.52
 
   ZDMOriginPort:
     Type: String
     Description: Port for the origin Cassandra cluster
-    Default: 9042
+    Default: '9042'
 
   ZDMOriginUsername:
     Type: String
@@ -73,47 +71,157 @@ Parameters:
     Description: Password for the origin Cassandra cluster
     NoEcho: true
     Default: cassandra
-    
-  ZDMTargetContactPoints:
-    Type: String
-    Description: Contact points for the target Cassandra cluster
-    Default: cassandra.us-east-1.amazonaws.com
 
-  ZDMTargetPort:
-    Type: String
-    Description: Port for the target Cassandra cluster
-    Default: 9142
-    
   ZDMTargetUsername:
     Type: String
-    Description: Username for the target Cassandra cluster
+    Description: Keyspaces service-specific credential username
     Default: example-user-at-101
-    
+
   ZDMTargetPassword:
     Type: String
-    Description: Password for the target Cassandra cluster
+    Description: Keyspaces service-specific credential password
     NoEcho: true
     Default: example_password=
 
   ZDMProxyPort:
     Type: String
-    Description: Password for the target Cassandra cluster
-    Default: 14002
+    Description: Port the ZDM proxy listens on
+    Default: '14002'
 
   ServiceReplicaCount:
     Type: Number
     Description: Number of ZDM Proxy service replicas to run
     Default: 3
-    MinValue: 3
+    MinValue: 1
     MaxValue: 100
-    ConstraintDescription: Must be a number between 1 and 100
 
   ECRImage:
     Type: String
-    Description: ECR image for zdm proxy
+    Description: ECR image URI for the custom ZDM proxy image
     Default: ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/zdm-proxy:latest
 
 Resources:
+  # --- VPC Endpoints ---
+  KeyspacesVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.cassandra'
+      VpcId: !Ref VPCId
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !Ref SecurityGroupId
+
+  EcrApiEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.api'
+      VpcId: !Ref VPCId
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !Ref SecurityGroupId
+
+  EcrDkrEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.dkr'
+      VpcId: !Ref VPCId
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !Ref SecurityGroupId
+
+  StsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.sts'
+      VpcId: !Ref VPCId
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !Ref SecurityGroupId
+
+  CloudWatchLogsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.logs'
+      VpcId: !Ref VPCId
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !Ref SecurityGroupId
+
+  SecretsManagerEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.secretsmanager'
+      VpcId: !Ref VPCId
+      VpcEndpointType: Interface
+      SubnetIds: !Ref PrivateSubnetIds
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !Ref SecurityGroupId
+
+  S3GatewayEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
+      VpcId: !Ref VPCId
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref RouteTableId
+
+  # --- IAM Roles ---
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+      Policies:
+        - PolicyName: SecretsManagerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'secretsmanager:GetSecretValue'
+                Resource:
+                  - !Ref OriginCredentialsSecret
+                  - !Ref TargetCredentialsSecret
+
+  # --- Secrets Manager ---
+  OriginCredentialsSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Origin Cassandra cluster credentials for ZDM Proxy
+      SecretString: !Sub '{"username":"${ZDMOriginUsername}","password":"${ZDMOriginPassword}"}'
+
+  TargetCredentialsSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Target Keyspaces credentials for ZDM Proxy
+      SecretString: !Sub '{"username":"${ZDMTargetUsername}","password":"${ZDMTargetPassword}"}'
+
+  # --- CloudWatch Logs ---
+  ZDMProxyLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 30
+
+  # --- NLB ---
   NetworkLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
@@ -146,99 +254,14 @@ Resources:
         - Type: forward
           TargetGroupArn: !Ref NLBTargetGroup
 
-  KeyspacesVPCEndpoint:
-      Type: AWS::EC2::VPCEndpoint
-      Properties:
-        ServiceName: !Sub 'com.amazonaws.${AWS::Region}.cassandra'
-        PrivateDnsEnabled: True
-        SecurityGroupIds:
-          - !Ref SecurityGroupId
-        SubnetIds: !Ref PrivateSubnetIds
-        VpcEndpointType: Interface
-        VpcId: !Ref VPCId
-  
-  EcrApiEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      ServiceName: !Sub com.amazonaws.${AWS::Region}.ecr.api
-      VpcId: !Ref VPCId
-      VpcEndpointType: Interface
-      SubnetIds: !Ref PrivateSubnetIds
-      PrivateDnsEnabled: True
-      SecurityGroupIds:
-        - !Ref SecurityGroupId
-
-  EcrDkrEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      ServiceName: !Sub com.amazonaws.${AWS::Region}.ecr.dkr
-      VpcId: !Ref VPCId
-      VpcEndpointType: Interface
-      SubnetIds: !Ref PrivateSubnetIds
-      PrivateDnsEnabled: True
-      SecurityGroupIds:
-        - !Ref SecurityGroupId
-
-  StsEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      ServiceName: !Sub com.amazonaws.${AWS::Region}.sts
-      VpcId: !Ref VPCId
-      VpcEndpointType: Interface
-      SubnetIds: !Ref PrivateSubnetIds
-      PrivateDnsEnabled: True
-      SecurityGroupIds:
-        - !Ref SecurityGroupId
-
-  CloudWatchLogsEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      ServiceName: !Sub com.amazonaws.${AWS::Region}.logs
-      VpcId: !Ref VPCId
-      VpcEndpointType: Interface
-      SubnetIds: !Ref PrivateSubnetIds
-      PrivateDnsEnabled: True
-      SecurityGroupIds:
-        - !Ref SecurityGroupId
-
-  # Create Gateway VPC endpoint for S3
-  S3GatewayEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      ServiceName: !Sub com.amazonaws.${AWS::Region}.s3
-      VpcId: !Ref VPCId
-      VpcEndpointType: Gateway
-      RouteTableIds:
-        - !Ref RouteTableId
-
-  # ECS Resources
+  # --- ECS ---
   ECSCluster:
     Type: AWS::ECS::Cluster
 
-  ZDMProxyLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      RetentionInDays: 30
-
-  # IAM Role for ECS Task Execution
-  ECSTaskExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
-        - 'arn:aws:iam::aws:policy/AmazonECS_FullAccess'
-
-  # ECS Task Definition
   ZDMProxyTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
+      Family: zdm-proxy
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
@@ -248,19 +271,14 @@ Resources:
       ContainerDefinitions:
         - Name: zdm-proxy
           Image: !Ref ECRImage
-          EntryPoint:
-            - /bin/sh
-            - -c
-          Command:
-            - exec /entrypoint.sh
           Essential: true
           PortMappings:
             - ContainerPort: !Ref ZDMProxyPort
-              HostPort: !Ref ZDMProxyPort
+              Protocol: tcp
           HealthCheck:
             Command:
               - CMD-SHELL
-              - !Sub "nc -z localhost ${ZDMProxyPort} || exit 1" 
+              - !Sub 'nc -z localhost ${ZDMProxyPort} || exit 1'
             Interval: 30
             Timeout: 5
             Retries: 3
@@ -268,40 +286,40 @@ Resources:
           Environment:
             - Name: ZDM_ORIGIN_CONTACT_POINTS
               Value: !Ref ZDMOriginContactPoints
-            - Name: ZDM_ORIGIN_USERNAME
-              Value: !Ref ZDMOriginUsername
-            - Name: ZDM_ORIGIN_PASSWORD
-              Value: !Ref ZDMOriginPassword
             - Name: ZDM_ORIGIN_PORT
               Value: !Ref ZDMOriginPort
             - Name: ZDM_TARGET_CONTACT_POINTS
-              Value: !Ref ZDMTargetContactPoints
-            - Name: ZDM_TARGET_USERNAME
-              Value: !Ref ZDMTargetUsername
-            - Name: ZDM_TARGET_PASSWORD
-              Value: !Ref ZDMTargetPassword
+              Value: localhost
             - Name: ZDM_TARGET_PORT
-              Value: !Ref ZDMTargetPort
-#            - Name: ZDM_ORIGIN_TLS_SERVER_CA_PATH
-#              Value: /app/sf-class2-root.crt
-            - Name: ZDM_TARGET_TLS_SERVER_CA_PATH
-              Value: /app/sf-class2-root.crt
+              Value: '9142'
+            - Name: ZDM_TARGET_TLS_ENABLED
+              Value: 'false'
+            - Name: ZDM_TARGET_ENABLE_HOST_ASSIGNMENT
+              Value: 'false'
+            - Name: ZDM_FORWARD_CLIENT_CREDENTIALS_TO_ORIGIN
+              Value: 'true'
             - Name: ZDM_PROXY_LISTEN_PORT
               Value: !Ref ZDMProxyPort
-#            - Name: ZDM_FORWARD_CLIENT_CREDENTIALS_TO_ORIGIN
-#              Value: 'false'
-            - Name: ZDM_LOG_LEVEL
-              Value: TRACE
             - Name: AWS_NLB_DNS
               Value: !GetAtt NetworkLoadBalancer.DNSName
+            - Name: AWS_REGION
+              Value: !Ref 'AWS::Region'
+          Secrets:
+            - Name: ZDM_ORIGIN_USERNAME
+              ValueFrom: !Sub '${OriginCredentialsSecret}:username::'
+            - Name: ZDM_ORIGIN_PASSWORD
+              ValueFrom: !Sub '${OriginCredentialsSecret}:password::'
+            - Name: ZDM_TARGET_USERNAME
+              ValueFrom: !Sub '${TargetCredentialsSecret}:username::'
+            - Name: ZDM_TARGET_PASSWORD
+              ValueFrom: !Sub '${TargetCredentialsSecret}:password::'
           LogConfiguration:
             LogDriver: awslogs
             Options:
               awslogs-group: !Ref ZDMProxyLogGroup
-              awslogs-region: !Ref AWS::Region
+              awslogs-region: !Ref 'AWS::Region'
               awslogs-stream-prefix: ecs
 
-  # ECS Service
   ZDMProxyService:
     Type: AWS::ECS::Service
     DependsOn: NLBListener
@@ -320,81 +338,20 @@ Resources:
         - TargetGroupArn: !Ref NLBTargetGroup
           ContainerName: zdm-proxy
           ContainerPort: !Ref ZDMProxyPort
-  
-  ECSTaskDefinition:
-    Type: AWS::ECS::TaskDefinition
-    Properties:
-      Family: ecs-cwagent-sidecar-fargate
-      RequiresCompatibilities:
-        - FARGATE
-      Cpu: '512'
-      Memory: '1024'
-      NetworkMode: awsvpc
-      TaskRoleArn: !Sub "{{task-role-arn}}"
-      ExecutionRoleArn: !Sub "{{execution-role-arn}}"
-      ContainerDefinitions:
-        - Name: demo-app
-          Image: alpine/socat:latest
-          EntryPoint:
-            - /bin/sh
-            - -c
-            - >-
-              while true; do echo 'statsdTestMetric:1|c' | socat -v -t 0 - UDP:127.0.0.1:8125; sleep 1; done
-          LogConfiguration:
-            LogDriver: awslogs
-            Options:
-              awslogs-create-group: "True"
-              awslogs-group: /ecs/ecs-cwagent-sidecar-fargate
-              awslogs-region: !Sub "{{awslogs-region}}"
-              awslogs-stream-prefix: ecs
 
-        - Name: cloudwatch-agent
-          Image: public.ecr.aws/cloudwatch-agent/cloudwatch-agent:1.300032.3b392
-          Secrets:
-            - Name: CW_CONFIG_CONTENT
-              ValueFrom: ecs-cwagent-sidecar-fargate
-          LogConfiguration:
-            LogDriver: awslogs
-            Options:
-              awslogs-create-group: "True"
-              awslogs-group: /ecs/ecs-cwagent-sidecar-fargate
-              awslogs-region: !Sub "{{awslogs-region}}"
-              awslogs-stream-prefix: ecs
 Outputs:
-  VPCId:
-    Description: VPC ID
-    Value: !Ref VPCId
-    Export:
-      Name: !Sub "${AWS::StackName}-VPCID"
-
-  PrivateSubnets:
-    Description: Private Subnets
-    Value: !Join [",", !Ref PrivateSubnetIds]
-    Export:
-      Name: !Sub "${AWS::StackName}-PrivateSubnets"
-
   ECSClusterName:
     Description: ECS Cluster Name
     Value: !Ref ECSCluster
-    Export:
-      Name: !Sub "${AWS::StackName}-ECSClusterName"
 
   ZDMProxyServiceName:
     Description: ZDM Proxy Service Name
     Value: !GetAtt ZDMProxyService.Name
-    Export:
-      Name: !Sub "${AWS::StackName}-ZDMProxyServiceName"
 
   NetworkLoadBalancerDNS:
     Description: DNS name of the Network Load Balancer
     Value: !GetAtt NetworkLoadBalancer.DNSName
-    Export:
-      Name: !Sub "${AWS::StackName}-NLBDNSName"
-      
+
   ServiceReplicaCount:
     Description: Number of ZDM Proxy service replicas running
     Value: !Ref ServiceReplicaCount
-    Export:
-      Name: !Sub "${AWS::StackName}-ServiceReplicaCount"
-  
-  
