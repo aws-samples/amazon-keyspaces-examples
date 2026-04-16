@@ -16,7 +16,7 @@ This repository introduces key enhancements for use with Amazon Web Services and
 
 The proxy is deployed with Amazon ECS on Fargate which can scale up and down based on application demand. The Network load balancer allows application traffic to be distributed across a number of ECS tasks. 
 
-![this screenshot](aws-ecs-zdm.drawio.png)
+![this screenshot](aws-ecs-zdm.drawio.svg)
 
 
 
