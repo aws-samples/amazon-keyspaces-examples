@@ -1,10 +1,11 @@
 # Migration to Amazon Keyspaces from Apache Cassandra
-This example provides scala scripts for migrating the Cassandra workload to Amazon Keyspaces (for Apache Cassandra) using AWS Glue.
-This allows you to migrate data from the Cassandra cluster to Amazon Keyspaces without setting up and provisioning a spark cluster.
+This example provides Scala scripts for migrating a Cassandra workload to Amazon Keyspaces using AWS Glue. This allows you to migrate data from a Cassandra cluster to Amazon Keyspaces without setting up a Spark cluster.
+
+This is a specialized workflow that connects directly to a self-managed Cassandra cluster via VPC. It is not managed by the `keyspaces-glue` CLI bootstrap — it requires manual Glue job creation (see below).
 
 ## Prerequisites
-* Cassandra source table
-* Amazon Keyspaces's target table to replicate the workload
+* Cassandra source table accessible via AWS Glue network connection (VPC)
+* Amazon Keyspaces target table
 * Amazon S3 bucket to store intermediate parquet files with incremental data changes
 * Amazon S3 bucket to store job configuration and scripts
 
@@ -64,20 +65,22 @@ object GlueApp {
     val conf = new SparkConf()
       .setAll(
        Seq(
-          ("spark.task.maxFailures",  "10"),
-             
+          ("spark.task.maxFailures",  "100"),
+
           ("spark.cassandra.connection.config.profile.path",  driverConfFileName),
-          ("spark.cassandra.query.retry.count", "1000"),
-          ("spark.cassandra.output.consistency.level",  "LOCAL_QUORUM"),//WRITES
-          ("spark.cassandra.input.consistency.level",  "LOCAL_QUORUM"),//READS
+          ("spark.sql.extensions", "com.datastax.spark.connector.CassandraSparkExtensions"),
+
+          ("spark.cassandra.output.consistency.level",  "LOCAL_QUORUM"),
+          ("spark.cassandra.input.consistency.level",  "LOCAL_ONE"),
 
           ("spark.cassandra.sql.inClauseToJoinConversionThreshold", "0"),
           ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
-          ("spark.cassandra.concurrent.reads", "512"),
+          ("spark.cassandra.concurrent.reads", "50"),
 
-          ("spark.cassandra.output.concurrent.writes", "15"),
+          ("spark.cassandra.output.concurrent.writes", "3"),
           ("spark.cassandra.output.batch.grouping.key", "none"),
-          ("spark.cassandra.output.batch.size.rows", "1")
+          ("spark.cassandra.output.batch.size.rows", "1"),
+          ("spark.cassandra.output.ignoreNulls", "true")
       ))
 
     val spark: SparkContext = new SparkContext(conf)
@@ -149,20 +152,22 @@ object GlueApp {
       .setAll(
        Seq(
           ("spark.task.maxFailures",  "100"),
-             
+
           ("spark.cassandra.connection.config.profile.path",  driverConfFileName),
-          ("spark.cassandra.query.retry.count", "1000"),
-          ("spark.cassandra.output.consistency.level",  "LOCAL_QUORUM"),//WRITES
-          ("spark.cassandra.input.consistency.level",   "LOCAL_QUORUM"),//READS
+          ("spark.sql.extensions", "com.datastax.spark.connector.CassandraSparkExtensions"),
+
+          ("spark.cassandra.output.consistency.level",  "LOCAL_QUORUM"),
+          ("spark.cassandra.input.consistency.level",  "LOCAL_ONE"),
 
           ("spark.cassandra.sql.inClauseToJoinConversionThreshold", "0"),
           ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
-          ("spark.cassandra.concurrent.reads", "512"),
+          ("spark.cassandra.concurrent.reads", "50"),
+          ("spark.cassandra.input.split.sizeInMB",  "64"),
 
-          ("spark.cassandra.output.concurrent.writes", "15"),
+          ("spark.cassandra.output.concurrent.writes", "3"),
           ("spark.cassandra.output.batch.grouping.key", "none"),
           ("spark.cassandra.output.batch.size.rows", "1"),
-          ("spark.cassandra.input.split.sizeInMB",  "64")
+          ("spark.cassandra.output.ignoreNulls", "true")
       ))
 
     val spark: SparkContext = new SparkContext(conf)

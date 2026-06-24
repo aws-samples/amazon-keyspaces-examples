@@ -1,41 +1,61 @@
-## Using Glue Count and Distinct Count Example
-This example provides scala script for counting number of rows in Amazon Keyspaces table data using AWS Glue. 
+## Count Table Rows
 
-## Prerequisites
-* Setup Spark Cassandra connector using provided [setup script](../)
+This example provides a Scala script for counting the number of rows in an Amazon Keyspaces table using AWS Glue.
 
-### Setup Count rows
-The following script sets up AWS Glue job to count rows for a Keyspaces table. The script takes the following parameters 
-* PARENT_STACK_NAME is the stack name used to create the spark cassandra connector with Glue. [setup script](../)
-* COUNT_STACK_NAME is the stack name used to create count rows glue job. 
-* KEYSPACE_NAME and TABLE_NAME Keyspaces and table is the fully qualified name of the table you wish to count. 
+### Prerequisites
 
+* Run `./keyspaces-glue bootstrap` from the [parent directory](../) to set up infrastructure and deploy all Glue jobs
 
-```shell
-./setup SETUP_STACK_NAME COUNT_STACK_NAME KEYSPACE_TABLE TABLE_NAME
+### Count All Rows
 
+```bash
+./keyspaces-glue count --keyspace mykeyspace --table mytable
 ```
 
-By default the result of the count will be logged in Cloudwatch logs. You should see similar output to the following. 
-
+Result is logged to CloudWatch:
 ```
-    Total number of rows: 5191983
-```
-
-### Setup Distinct Count
-The following script sets up AWS Glue job to count rows for a Keyspaces table. The script takes the following parameters 
-* PARENT_STACK_NAME is the stack name used to create the spark cassandra connector with Glue. [setup script](../)
-* COUNT_STACK_NAME is the stack name used to create count rows glue job. 
-* KEYSPACE_NAME and TABLE_NAME Keyspaces and table is the fully qualified name of the table you wish to count. 
-* DISTINCT_KEYS comma seperated list of keys to perform distinct count. Leave blank to count every row. 
-
-```shell
-./setup SETUP_STACK_NAME COUNT_STACK_NAME KEYSPACE_TABLE TABLE_NAME DISTINCT_KEYS
-
+Total number of rows: 5191983
 ```
 
-By default the result of the distinct count will be logged in Cloudwatch logs. You should see similar output to the following. 
+### Count Distinct Keys
 
+Provide a comma-separated list of columns to count distinct combinations:
+
+```bash
+./keyspaces-glue count --keyspace mykeyspace --table mytable --distinct-keys "user_id"
 ```
-    Total number of distinct rows: 41983
+
+Result:
+```
+Total number of distinct rows: 41983
+```
+
+### Count with a Filter
+
+```bash
+./keyspaces-glue count --keyspace mykeyspace --table mytable \
+  --where-clause "created_date >= '2025-01-01'"
+```
+
+### Script Arguments
+
+| Argument | Description | Default |
+| :--- | :--- | :--- |
+| --KEYSPACE_NAME | Keyspace containing the table | mykeyspace |
+| --TABLE_NAME | Table to count | mytable |
+| --DISTINCT_KEYS | Comma-separated columns for distinct count | (none — counts all rows) |
+| --WHERE_CLAUSE | Optional filter condition | (none) |
+| --DRIVER_CONF | Driver configuration file | keyspaces-application.conf |
+
+### Viewing Results
+
+Count results are written to CloudWatch logs. Use the CLI to retrieve them:
+
+```bash
+./keyspaces-glue logs count --log-type error
+```
+
+For a specific run:
+```bash
+./keyspaces-glue logs count --run-id jr_abc123 --log-type error
 ```

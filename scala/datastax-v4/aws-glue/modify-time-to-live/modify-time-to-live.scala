@@ -82,7 +82,12 @@ object GlueApp {
 
   def main(sysArgs: Array[String]) {
 
-    val args = GlueArgParser.getResolvedOptions(sysArgs, Seq("JOB_NAME", "KEYSPACE_NAME", "TABLE_NAME", "DRIVER_CONF", "TTL_FIELD", "TTL_TIME_TO_ADD").toArray)
+    val requiredParams = Seq("JOB_NAME", "KEYSPACE_NAME", "TABLE_NAME", "DRIVER_CONF", "TTL_FIELD", "TTL_TIME_TO_ADD")
+    val optionalParams = Seq("WHERE_CLAUSE")
+    val validOptionalParams = optionalParams.filter(param => sysArgs.contains(s"--$param"))
+    val allParams = requiredParams ++ validOptionalParams
+
+    val args = GlueArgParser.getResolvedOptions(sysArgs, allParams.toArray)
 
     val driverConfFileName = args("DRIVER_CONF")
 
@@ -102,9 +107,8 @@ object GlueApp {
             ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
             ("spark.cassandra.concurrent.reads", "50"),
 
-            ("spark.cassandra.output.concurrent.writes", "5"),
+            ("spark.cassandra.output.concurrent.writes", "3"),
             ("spark.cassandra.output.batch.grouping.key", "none"),
-            ("spark.cassandra.output.batch.size.rows", "1"),
             ("spark.cassandra.output.batch.size.rows", "1"),
             ("spark.cassandra.output.ignoreNulls", "true")
         ))
@@ -140,16 +144,18 @@ object GlueApp {
     
     val tableName = args("TABLE_NAME")
     val keyspaceName = args("KEYSPACE_NAME")
-    val backupS3 = args("S3_URI")
-    val backupFormat = args("FORMAT")
-    
-    val tableDf = sparkSession.read
+    val whereClause = args.getOrElse("WHERE_CLAUSE", "")
+
+    var tableDf = sparkSession.read
       .format("org.apache.spark.sql.cassandra")
-      .options(Map( "table" -> tableName, 
-                    "keyspace" -> keyspaceName, 
+      .options(Map( "table" -> tableName,
+                    "keyspace" -> keyspaceName,
                     "pushdown" -> "false"))//set to true when executing against Apache Cassandra, false when working with Keyspaces
       .load()
-      //.filter("my_column=='somevalue' AND my_othercolumn=='someothervalue'")
+
+    if(whereClause.trim.nonEmpty){
+       tableDf = tableDf.filter(whereClause)
+    }
 
     // Register the UDF for calculating TTL
     val calculateTTLUDF = udf((currentTTL: Int, timeToAdd: Int) => addTimeToExistingTTL(currentTTL, timeToAdd))

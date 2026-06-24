@@ -25,21 +25,31 @@ object GlueApp {
 
   def main(sysArgs: Array[String]) {
 
-    val args = GlueArgParser.getResolvedOptions(sysArgs, Seq("JOB_NAME", "KEYSPACE_NAME", "TABLE_NAME", "DRIVER_CONF", "GROUPBY", "MAX_RESULTS", "MIN_SIZE").toArray)
+    val requiredParams = Seq("JOB_NAME", "KEYSPACE_NAME", "TABLE_NAME", "DRIVER_CONF", "GROUPBY", "MAX_RESULTS", "MIN_SIZE")
+    val optionalParams = Seq("WHERE_CLAUSE")
+    val validOptionalParams = optionalParams.filter(param => sysArgs.contains(s"--$param"))
+    val allParams = requiredParams ++ validOptionalParams
+
+    val args = GlueArgParser.getResolvedOptions(sysArgs, allParams.toArray)
 
     val driverConfFileName = args("DRIVER_CONF")
 
     val conf = new SparkConf()
         .setAll(
          Seq(
-            ("spark.cassandra.connection.config.profile.path",  driverConfFileName),
-            ("spark.cassandra.query.retry.count", "100"),
+            ("spark.task.maxFailures",  "100"),
 
-             ("spark.cassandra.sql.inClauseToJoinConversionThreshold", "0"),
+            ("spark.cassandra.connection.config.profile.path",  driverConfFileName),
+            ("spark.sql.extensions", "com.datastax.spark.connector.CassandraSparkExtensions"),
+
+            ("spark.cassandra.output.consistency.level",  "LOCAL_QUORUM"),
+            ("spark.cassandra.input.consistency.level",  "LOCAL_ONE"),
+
+            ("spark.cassandra.sql.inClauseToJoinConversionThreshold", "0"),
             ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
             ("spark.cassandra.concurrent.reads", "50"),
 
-            ("spark.cassandra.output.concurrent.writes", "5"),
+            ("spark.cassandra.output.concurrent.writes", "3"),
             ("spark.cassandra.output.batch.grouping.key", "none"),
             ("spark.cassandra.output.batch.size.rows", "1"),
             ("spark.cassandra.output.ignoreNulls", "true")
@@ -78,13 +88,18 @@ object GlueApp {
 
     val tableName = args("TABLE_NAME")
     val keyspaceName = args("KEYSPACE_NAME")
+    val whereClause = args.getOrElse("WHERE_CLAUSE", "")
 
-    val tableDf = sparkSession.read
+    var tableDf = sparkSession.read
       .format("org.apache.spark.sql.cassandra")
-      .options(Map( "table" -> tableName, 
+      .options(Map( "table" -> tableName,
                     "keyspace" -> keyspaceName,
                     "pushdown" -> "false"))//set to true when executing against Apache Cassandra, false when working with Keyspaces
       .load()
+
+    if(whereClause.trim.nonEmpty){
+       tableDf = tableDf.filter(whereClause)
+    }
 
     val minimumSize = args("MIN_SIZE").toInt
     val maximumResults = args("MAX_RESULTS").toInt

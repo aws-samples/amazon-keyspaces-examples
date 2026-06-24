@@ -26,20 +26,22 @@ object GlueApp {
     val conf = new SparkConf()
       .setAll(
        Seq(
-          ("spark.task.maxFailures",  "10"),
-             
+          ("spark.task.maxFailures",  "100"),
+
           ("spark.cassandra.connection.config.profile.path",  driverConfFileName),
-          ("spark.cassandra.query.retry.count", "1000"),
-          ("spark.cassandra.output.consistency.level",  "LOCAL_QUORUM"),//WRITES
-          ("spark.cassandra.input.consistency.level",  "LOCAL_QUORUM"),//READS
+          ("spark.sql.extensions", "com.datastax.spark.connector.CassandraSparkExtensions"),
 
-          //("spark.cassandra.sql.inClauseToJoinConversionThreshold", "0"),
-          //("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
-          ("spark.cassandra.concurrent.reads", "512"),
+          ("spark.cassandra.output.consistency.level",  "LOCAL_QUORUM"),
+          ("spark.cassandra.input.consistency.level",  "LOCAL_ONE"),
 
-          ("spark.cassandra.output.concurrent.writes", "15"),
+          ("spark.cassandra.sql.inClauseToJoinConversionThreshold", "0"),
+          ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
+          ("spark.cassandra.concurrent.reads", "50"),
+
+          ("spark.cassandra.output.concurrent.writes", "3"),
           ("spark.cassandra.output.batch.grouping.key", "none"),
-          ("spark.cassandra.output.batch.size.rows", "1")
+          ("spark.cassandra.output.batch.size.rows", "1"),
+          ("spark.cassandra.output.ignoreNulls", "true")
       ))
 
     val spark: SparkContext = new SparkContext(conf)

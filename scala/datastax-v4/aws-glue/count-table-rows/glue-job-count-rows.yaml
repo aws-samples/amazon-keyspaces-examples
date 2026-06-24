@@ -15,12 +15,17 @@ Parameters:
       #Default: mytable
       MinLength: 3
       MaxLength: 48
-  DistinctKeys: 
+  DistinctKeys:
       NoEcho: false
-      Description: Optional Paramter. Provide comma seperated list of keys (example "id,create_date") to perform distinct count. Leave blank to count every row. 
+      Description: Optional Paramter. Provide comma seperated list of keys (example "id,create_date") to perform distinct count. Leave blank to count every row.
       Type: String
       Default: ""
       MaxLength: 48
+  WhereClause:
+      NoEcho: false
+      Description: Optional Paramter. Provide filter criteria (example "my_column=='somevalue' AND my_othercolumn=='someothervalue'")
+      Type: String
+      Default: ""
   ParentStack:
       NoEcho: false
       Description: Stack used to setup the spark cassandra connector
@@ -28,6 +33,11 @@ Parameters:
       Default: aksglue
       MinLength: 3
       MaxLength: 48      
+Conditions:
+    IsWhereClauseEmpty: !Equals
+      - !Ref WhereClause
+      - ""
+
 Resources:
   GlueJob:
     Type: AWS::Glue::Job
@@ -71,13 +81,16 @@ Resources:
         "--TABLE_NAME": !Sub '${TableName}'
         "--DRIVER_CONF": "keyspaces-application.conf"
         --DISTINCT_KEYS": !Sub '${DistinctKeys}'
+        "--WHERE_CLAUSE": !If
+          - IsWhereClauseEmpty
+          - !Ref "AWS::NoValue"
+          - !Sub '${WhereClause}'
         "--class": "GlueApp"
       #Connections: 
       #  ConnectionsList
       Description: 'count rows in a Keyspaces table'
-      #ExecutionClass: String
-      #ExecutionProperty: 
-        #ExecutionProperty
+      ExecutionProperty:
+        MaxConcurrentRuns: 3
       GlueVersion: "3.0"
       #LogUri: String
       #MaxCapacity: Double

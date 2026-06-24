@@ -34,6 +34,17 @@ Parameters:
       Description: The time to add to the TTL
       Type: String
       Default: 2592000 # 30 days
+  WhereClause:
+      NoEcho: false
+      Description: Optional Paramter. Provide filter criteria (example "my_column=='somevalue' AND my_othercolumn=='someothervalue'")
+      Type: String
+      Default: ""
+
+Conditions:
+    IsWhereClauseEmpty: !Equals
+      - !Ref WhereClause
+      - ""
+
 Resources:
   GlueJob:
     Type: AWS::Glue::Job
@@ -73,20 +84,21 @@ Resources:
         - IMPORTBUCKETNAME: 
             Fn::ImportValue:
               !Sub 'KeyspacesBucketNameExport-${ParentStack}'
-        "--FORMAT": !Sub '${FORMAT}'
         "--KEYSPACE_NAME": !Sub '${KeyspaceName}'
         "--TABLE_NAME": !Sub '${TableName}'
         "--DRIVER_CONF": "keyspaces-application.conf"
         "--TTL_FIELD": !Sub '${TTLField}'
         "--TTL_TIME_TO_ADD": !Sub '${TTLTimeToAdd}'
-        #"--DISTINCT_KEYS": "id,create_date"
+        "--WHERE_CLAUSE": !If
+          - IsWhereClauseEmpty
+          - !Ref "AWS::NoValue"
+          - !Sub '${WhereClause}'
         "--class": "GlueApp"
       #Connections: 
       #  ConnectionsList
       Description: 'modify ttl'
-      #ExecutionClass: String
-      #ExecutionProperty: 
-        #ExecutionProperty
+      ExecutionProperty:
+        MaxConcurrentRuns: 3
       GlueVersion: "3.0"
       #LogUri: String
       #MaxCapacity: Double

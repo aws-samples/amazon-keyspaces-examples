@@ -22,9 +22,128 @@ import java.time.ZonedDateTime
 import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
 import java.time.format.DateTimeFormatter
+import scala.util.Random
+import scala.collection.mutable.Map
+import com.datastax.oss.driver.api.core.metadata.token.TokenRange
+import com.datastax.oss.driver.api.core.metadata.token.Token
+import com.datastax.oss.driver.api.core.cql.SimpleStatement
+import com.datastax.oss.driver.api.core.cql.ResultSet
+import com.datastax.oss.driver.api.core.ConsistencyLevel
 
 
 object GlueApp {
+
+  def selectRandomTokenRange(session: CqlSession, keyspaceName: String, tokenSplits: Int): Map[String, Token] = {
+    try {
+      val logger = new GlueLogger
+      logger.info(s"Selecting random token range for keyspace: $keyspaceName, token splits: $tokenSplits")
+      
+      // Get token ranges from the session metadata
+      val tokenRanges = session.getMetadata()
+        .getTokenMap()
+        .get()
+        .getTokenRanges()
+        .asScala
+        .toSet
+      
+      if (tokenRanges.isEmpty) {
+        throw new RuntimeException("No token ranges available")
+      }
+      
+      // Randomly select a token range from the available ranges
+      val randomRange = tokenRanges.toSeq(Random.nextInt(tokenRanges.size))
+      
+      // Split the selected range into smaller segments for more granular sampling
+      val viableSplits = randomRange.unwrap()
+        .asScala
+        .flatMap(_.splitEvenly(tokenSplits).asScala)
+        .filter(!_.isEmpty)
+        .toSet
+      
+      if (viableSplits.isEmpty) {
+        throw new RuntimeException("No viable token splits available")
+      }
+      
+      // Randomly select one of the split segments
+      val randomSplit = viableSplits.toSeq(Random.nextInt(viableSplits.size))
+      
+      // Create result map with starting and ending tokens
+      val result = Map[String, Token]()
+      result += ("startingTokenRange" -> randomSplit.getStart)
+      result += ("endingTokenRange" -> randomSplit.getEnd)
+      
+      logger.info(s"Selected token range: ${randomSplit.getStart} to ${randomSplit.getEnd}")
+      
+      result
+      
+    } catch {
+      case e: Exception =>
+        val logger = new GlueLogger
+        logger.error("Failed to select random token range", e)
+        throw new RuntimeException("Token range selection failed", e)
+    }
+  }
+
+  def extractPartitionKeyName(session: CqlSession, keyspaceName: String, tableName: String): String = {
+    try {
+      val tableMetadata = session.getMetadata()
+        .getKeyspace(keyspaceName)
+        .get()
+        .getTable(tableName)
+        .get()
+      
+      val partitionKey = tableMetadata.getPartitionKey()
+        .asScala
+        .map(_.getName.toString)
+        .mkString(", ")
+      
+      partitionKey
+    } catch {
+      case e: Exception =>
+        throw new RuntimeException(s"Failed to extract partition key for table $keyspaceName.$tableName", e)
+    }
+  }
+
+  def sampleFromCassandra(
+    session: CqlSession, 
+    keyspaceName: String, 
+    tableName: String, 
+    tokenSplits: Int, 
+    sampleSize: Int, 
+    consistencyLevel: ConsistencyLevel
+  ): List[com.datastax.oss.driver.api.core.cql.Row] = {
+    try {
+      // Select a random token range for sampling
+      val tokenMap = selectRandomTokenRange(session, keyspaceName, tokenSplits)
+
+      // Extract the partition key name for the token-based query
+      val partitionKey = extractPartitionKeyName(session, keyspaceName, tableName)
+
+      // Build query to sample records from the specified token range
+      val query = s"SELECT $partitionKey FROM $keyspaceName.$tableName WHERE token($partitionKey) >= ? AND token($partitionKey) < ? LIMIT ?"
+      
+      // Create statement with specified consistency level for faster reads
+      val simpleStatement = SimpleStatement.builder(query)
+        .setConsistencyLevel(consistencyLevel)
+        .addPositionalValue(tokenMap("startingTokenRange"))
+        .addPositionalValue(tokenMap("endingTokenRange"))
+        .addPositionalValue(sampleSize)
+        .build()
+      
+      // Execute the query
+      val resultSet = session.execute(simpleStatement)
+      
+      // Convert to Scala List
+      val rows = resultSet.all().asScala.toList
+      
+      rows
+    } catch {
+      case e: Exception =>
+        val logger = new GlueLogger
+        logger.error("Failed to sample from Cassandra", e)
+        throw new RuntimeException("Cassandra sampling failed", e)
+    }
+  }
 
   def main(sysArgs: Array[String]) {
 
@@ -106,6 +225,7 @@ object GlueApp {
     }
 
 
+
     val now = ZonedDateTime.now( ZoneOffset.UTC )//.truncatedTo( ChronoUnit.MINUTES ).format( DateTimeFormatter.ISO_DATE_TIME )
 
     val fullbackuplocation = backupS3 +
@@ -123,4 +243,7 @@ object GlueApp {
 
     Job.commit()
   }
+
+  
+  
 }

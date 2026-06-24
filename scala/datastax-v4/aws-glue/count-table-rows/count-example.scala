@@ -24,8 +24,8 @@ object GlueApp {
   def main(sysArgs: Array[String]) {
 
     val requiredParams = Seq("JOB_NAME", "KEYSPACE_NAME", "TABLE_NAME", "DRIVER_CONF")
-    
-    val optionalParams = Seq("DISTINCT_KEYS")
+
+    val optionalParams = Seq("DISTINCT_KEYS", "WHERE_CLAUSE")
 
     // Build a list of optional parameters that exist in sysArgs
     val validOptionalParams = optionalParams.filter(param => sysArgs.contains(s"--$param"))
@@ -53,9 +53,10 @@ object GlueApp {
             ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
             ("spark.cassandra.concurrent.reads", "50"),
 
-            ("spark.cassandra.output.concurrent.writes", "5"),
+            ("spark.cassandra.output.concurrent.writes", "3"),
             ("spark.cassandra.output.batch.grouping.key", "none"),
-            ("spark.cassandra.output.batch.size.rows", "1")
+            ("spark.cassandra.output.batch.size.rows", "1"),
+            ("spark.cassandra.output.ignoreNulls", "true")
         ))
 
 
@@ -92,14 +93,18 @@ object GlueApp {
     val tableName = args("TABLE_NAME")
     val keyspaceName = args("KEYSPACE_NAME")
     val distinctKeysCSV = args.getOrElse("DISTINCT_KEYS", "")
+    val whereClause = args.getOrElse("WHERE_CLAUSE", "")
 
-    val tableDf = sparkSession.read
+    var tableDf = sparkSession.read
       .format("org.apache.spark.sql.cassandra")
-      .options(Map( "table" -> tableName, 
-                    "keyspace" -> keyspaceName, 
+      .options(Map( "table" -> tableName,
+                    "keyspace" -> keyspaceName,
                     "pushdown" -> "false"))//set to true when executing against Apache Cassandra, false when working with Keyspaces
       .load()
-       //.filter("my_column=='somevalue' AND my_othercolumn=='someothervalue'")
+
+    if(whereClause.trim.nonEmpty){
+       tableDf = tableDf.filter(whereClause)
+    }
 
     if (Option(distinctKeysCSV).exists(_.nonEmpty)) {
       

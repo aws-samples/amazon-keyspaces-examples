@@ -85,9 +85,8 @@ Resources:
       #Connections: 
       #  ConnectionsList
       Description: 'import to s3'
-      #ExecutionClass: String
-      #ExecutionProperty: 
-        #ExecutionProperty
+      ExecutionProperty:
+        MaxConcurrentRuns: 3
       GlueVersion: "3.0"
       #LogUri: String
       #MaxCapacity: Double

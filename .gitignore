@@ -1,2 +1,5 @@
 scala/datastax-v4/aws-glue/dist/
+scala/datastax-v4/aws-glue/.venv/
 **/*.DS_Store
+**/__pycache__/
+*.egg-info/

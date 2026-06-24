@@ -35,18 +35,22 @@ object GlueApp {
   val conf = new SparkConf()
       .setAll(
        Seq(
-           ("spark.task.maxFailures",  "10"),
+           ("spark.task.maxFailures",  "100"),
 
           ("spark.cassandra.connection.config.profile.path",  driverConfFileName),
-          ("spark.cassandra.query.retry.count", "1000"),
+          ("spark.sql.extensions", "com.datastax.spark.connector.CassandraSparkExtensions"),
+
+          ("spark.cassandra.output.consistency.level",  "LOCAL_QUORUM"),
+          ("spark.cassandra.input.consistency.level",  "LOCAL_ONE"),
 
           ("spark.cassandra.sql.inClauseToJoinConversionThreshold", "0"),
           ("spark.cassandra.sql.inClauseToFullScanConversionThreshold", "0"),
-          ("spark.cassandra.concurrent.reads", "512"),
+          ("spark.cassandra.concurrent.reads", "50"),
 
-          ("spark.cassandra.output.concurrent.writes", "5"),
+          ("spark.cassandra.output.concurrent.writes", "3"),
           ("spark.cassandra.output.batch.grouping.key", "none"),
-          ("spark.cassandra.output.batch.size.rows", "1")
+          ("spark.cassandra.output.batch.size.rows", "1"),
+          ("spark.cassandra.output.ignoreNulls", "true")
       ))
 
     val spark: SparkContext = new SparkContext(conf)
@@ -83,7 +87,7 @@ object GlueApp {
       .map(_ => (Random.nextLong+"",today, Random.nextLong+"", Random.nextLong))
       .toDF("id","create_date","data", "count")
 
-   randomData.write.format("org.apache.spark.sql.cassandra").mode("append").option("keyspace", keyspaceName).option("table", tableName).option("output.consistency.level","LOCAL_QUORUM").save()
+   randomData.write.format("org.apache.spark.sql.cassandra").mode("append").option("keyspace", keyspaceName).option("table", tableName).save()
 
    Job.commit()
   }

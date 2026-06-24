@@ -33,7 +33,18 @@ Parameters:
       Type: String
       Default: parquet
       MinLength: 3
-      MaxLength: 48   
+      MaxLength: 48
+  WhereClause:
+      NoEcho: false
+      Description: Optional Paramter. Provide filter criteria (example "my_column=='somevalue' AND my_othercolumn=='someothervalue'")
+      Type: String
+      Default: ""
+
+Conditions:
+    IsWhereClauseEmpty: !Equals
+      - !Ref WhereClause
+      - ""
+
 Resources:
   GlueJob:
     Type: AWS::Glue::Job
@@ -78,14 +89,16 @@ Resources:
         "--TABLE_NAME": !Sub '${TableName}'
         "--S3_URI": !Sub '${S3URI}'
         "--DRIVER_CONF": "keyspaces-application.conf"
-        #"--DISTINCT_KEYS": "id,create_date"
+        "--WHERE_CLAUSE": !If
+          - IsWhereClauseEmpty
+          - !Ref "AWS::NoValue"
+          - !Sub '${WhereClause}'
         "--class": "GlueApp"
       #Connections: 
       #  ConnectionsList
       Description: 'export to s3'
-      #ExecutionClass: String
-      #ExecutionProperty: 
-        #ExecutionProperty
+      ExecutionProperty:
+        MaxConcurrentRuns: 3
       GlueVersion: "3.0"
       #LogUri: String
       #MaxCapacity: Double

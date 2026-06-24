@@ -30,7 +30,7 @@ object GlueApp {
 
     val requiredParams = Seq("JOB_NAME", "KEYSPACE_NAME", "TABLE_NAME", "DRIVER_CONF")
 
-    val optionalParams = Seq("DISTINCT_KEYS", "QUERY_FILTER", "FORMAT", "S3_URI")
+    val optionalParams = Seq("DISTINCT_KEYS", "WHERE_CLAUSE", "FORMAT", "S3_URI")
 
     // Build a list of optional parameters that exist in sysArgs
     val validOptionalParams = optionalParams.filter(param =>  sysArgs.contains(s"--$param") && param.trim.nonEmpty)
@@ -60,7 +60,6 @@ object GlueApp {
 
             ("spark.cassandra.output.concurrent.writes", "3"),
             ("spark.cassandra.output.batch.grouping.key", "none"),
-            ("spark.cassandra.output.batch.size.rows", "1"),
             ("spark.cassandra.output.batch.size.rows", "1"),
             ("spark.cassandra.output.ignoreNulls", "true")
         ))
@@ -96,7 +95,7 @@ object GlueApp {
     
     val backupLocation = args.getOrElse("S3_URI", "")
     val backupFormat = args.getOrElse("FORMAT", "parquet")
-    val filterCriteria = args.getOrElse("QUERY_FILTER", "")
+    val whereClause = args.getOrElse("WHERE_CLAUSE", "")
     
     val tableName = args("TABLE_NAME")
     val keyspaceName = args("KEYSPACE_NAME")
@@ -136,8 +135,8 @@ object GlueApp {
                     "pushdown" -> "false"))//set to true when executing against Apache Cassandra, false when working with Keyspaces
       .load()
       
-    if(filterCriteria.trim.nonEmpty){
-       tableDf = tableDf.filter(filterCriteria)
+    if(whereClause.trim.nonEmpty){
+       tableDf = tableDf.filter(whereClause)
     }
 
     //backup to s3 for data that wil be deleted
