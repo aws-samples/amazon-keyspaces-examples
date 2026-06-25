@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mykeyspacessigv4springbootapp
+  namespace: <EKS namespace>
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mykeyspacessigv4springbootapp
+  template:
+    metadata:
+      labels:
+        app: mykeyspacessigv4springbootapp
+    spec:
+      serviceAccountName: <eks-service-account>
+      containers:
+      - name: <ECR Repository name>
+        image: <aws_account_id>.dkr.ecr.<AWS_region>.amazonaws.com/<ECR_repositoryname>:<your_tag>
+        ports:
+        - containerPort: 8080
+        env:
+        - name: CASSANDRA_HOST
+          value: "<Keyspaces Endpoint>:9142"
+        - name: CASSANDRA_DC
+          value: "<keyspaces AWS region>"
+        - name: AWS_WEB_IDENTITY_TOKEN_FILE
+          value: /var/run/secrets/eks.amazonaws.com/serviceaccount/token
+        - name: AWS_ROLE_ARN
+          value: "arn:aws:iam::<AWS Account ID>:role/<IAM Role>"
+        - name: AWS_REGION
+          value: "<AWS Region>"
+
