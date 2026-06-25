@@ -1,0 +1,102 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: 'Directly copy Keyspaces rows to DynamoDB'
+Parameters:
+  KeyspaceName: 
+      NoEcho: false
+      Description: Cassandra Keyspace name
+      Type: String
+      Default: mykeyspace
+      MinLength: 3
+      MaxLength: 48
+  TableName: 
+      NoEcho: false
+      Description: Cassandra Table name
+      Type: String
+      Default: mytable
+      MinLength: 3
+      MaxLength: 48
+  ParentStack:
+      NoEcho: false
+      Description: Stack used to setup the spark cassandra connector
+      Type: String
+      Default: aksglue1
+      MinLength: 3
+      MaxLength: 48
+  DynamoDBTableName:
+      NoEcho: false
+      Description: The DynamoDB table name to write the data into
+      Type: String
+  DynamoDBWriteUnits:
+      NoEcho: false
+      Description: Target write capacity units for the DynamoDB table
+      Type: Number
+      Default: 1000
+      MaxValue: 80000
+Resources:
+  GlueJob:
+    Type: AWS::Glue::Job
+    Properties: 
+      Command:
+        Name: glueetl
+        ScriptLocation: !Sub 
+        - "s3://${IMPORTBUCKETNAME}/scripts/${ParentStack}-${AWS::StackName}-migration.scala"
+        - IMPORTBUCKETNAME: 
+            Fn::ImportValue: 
+              !Sub 'KeyspacesBucketNameExport-${ParentStack}'
+      DefaultArguments: 
+        "--job-language": "scala"
+        "--user-jars-first": "true"
+        "--extra-jars": !Sub 
+        - 's3://${IMPORTBUCKETNAME}/jars/spark-cassandra-connector-assembly_2.12-3.1.0.jar,s3://${IMPORTBUCKETNAME}/jars/aws-sigv4-auth-cassandra-java-driver-plugin-4.0.9-shaded.jar,s3://${IMPORTBUCKETNAME}/jars/spark-extension_2.12-2.8.0-3.4.jar,s3://${IMPORTBUCKETNAME}/jars/amazon-keyspaces-helpers-1.0-SNAPSHOT.jar'
+        - IMPORTBUCKETNAME:
+            Fn::ImportValue:
+              !Sub 'KeyspacesBucketNameExport-${ParentStack}'
+        "--extra-files": !Sub 
+        - 's3://${IMPORTBUCKETNAME}/conf/keyspaces-application.conf'
+        - IMPORTBUCKETNAME: 
+            Fn::ImportValue:
+              !Sub 'KeyspacesBucketNameExport-${ParentStack}'
+        "--enable-metrics": "true"
+        "--enable-continuous-cloudwatch-log": "true"
+        "--enable-spark-ui": "true"
+        "--spark-event-logs-path": !Sub 
+        - "s3://${IMPORTBUCKETNAME}/spark-logs/"
+        - IMPORTBUCKETNAME: 
+            Fn::ImportValue:
+              !Sub 'KeyspacesBucketNameExport-${ParentStack}'
+        "--write-shuffle-files-to-s3": "true"
+        "--write-shuffle-spills-to-s3": "true"
+        "--TempDir": !Sub 
+        - 's3://${IMPORTBUCKETNAME}/shuffle-space/export-sample/'
+        - IMPORTBUCKETNAME: 
+            Fn::ImportValue:
+              !Sub 'KeyspacesBucketNameExport-${ParentStack}'
+        "--DYNAMODB_WRITE_UNITS": !Sub '${DynamoDBWriteUnits}'
+        "--KEYSPACE_NAME": !Sub '${KeyspaceName}'
+        "--TABLE_NAME": !Sub '${TableName}'
+        "--DYNAMODB_TABLE_NAME": !Sub '${DynamoDBTableName}'
+        "--DRIVER_CONF": "keyspaces-application.conf"
+        #"--DISTINCT_KEYS": "id,create_date"
+        "--class": "GlueApp"
+      #Connections: 
+      #  ConnectionsList
+      Description: 'export to s3'
+      #ExecutionClass: String
+      #ExecutionProperty: 
+        #ExecutionProperty
+      GlueVersion: "3.0"
+      #LogUri: String
+      #MaxCapacity: Double
+      #MaxRetries: Double
+      Name: !Sub ['AmazonKeyspacesExportToS3-${STACKNAME}', STACKNAME: !Join [ "-", [!Ref ParentStack, !Ref  AWS::StackName]]]
+      #NonOverridableArguments: Json
+      #NotificationProperty: 
+      #NotificationProperty
+      NumberOfWorkers: 2
+      Role: 
+        Fn::ImportValue:
+            !Sub 'KeyspacesGlueJobServiceRoleExport-${ParentStack}'
+      #SecurityConfiguration: String
+      #Tags: Json
+      #Timeout: Integer
+      WorkerType: G.2X
