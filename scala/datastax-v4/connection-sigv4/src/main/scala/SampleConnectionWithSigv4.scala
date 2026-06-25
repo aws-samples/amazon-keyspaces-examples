@@ -12,14 +12,12 @@ object SampleConnectionWithSigv4 {
   // and the AWS default credential chain.
   // see https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/credentials.html.
   def main(args: Array[String]): Unit = {
-    val resultSet = session.execute("select * from system_schema.keyspaces");
-    val rows = resultSet.all().asScala;
-    rows.foreach({ println } );
+    val resultSet = session.execute("select * from system_schema.keyspaces")
+    val rows = resultSet.all().asScala
+    rows.foreach(println)
 
-    println("List of all Keyspaces in this region...");
-    for (row <- rows) println(row.getString("keyspace_name"));
-
-    System.exit(0);
+    println("List of all Keyspaces in this region...")
+    for (row <- rows) println(row.getString("keyspace_name"))
   }
 
   private val session = CqlSession.builder.build()
