@@ -4,12 +4,12 @@ This example provides a Scala script for importing data to Amazon Keyspaces from
 
 ### Prerequisites
 
-* Run `./keyspaces-glue bootstrap` from the [parent directory](../) to set up infrastructure and deploy all Glue jobs
+* Run `./keyspaces-bulk-cli bootstrap` from the [parent directory](../) to set up infrastructure and deploy all Glue jobs
 
 ### Running the Import
 
 ```bash
-./keyspaces-glue import \
+./keyspaces-bulk-cli import \
   --keyspace mykeyspace \
   --table mytable \
   --s3-uri s3://my-bucket/export/mykeyspace/mytable/snapshot/year=2025/month=01/day=15/hour=10/minute=30 \
@@ -18,7 +18,7 @@ This example provides a Scala script for importing data to Amazon Keyspaces from
 
 Override workers for large imports:
 ```bash
-./keyspaces-glue import \
+./keyspaces-bulk-cli import \
   --keyspace production \
   --table orders \
   --s3-uri s3://my-bucket/export/production/orders/snapshot/year=2025/month=06/day=01/hour=00/minute=00 \

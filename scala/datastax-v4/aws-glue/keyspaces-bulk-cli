@@ -7,7 +7,7 @@ REQUIREMENTS="$SCRIPT_DIR/requirements.txt"
 VENV_DIR="$SCRIPT_DIR/.venv"
 
 if [ ! -f "$CLI_SCRIPT" ]; then
-    echo "Error: keyspaces_glue_cli.py not found in $SCRIPT_DIR" >&2
+    echo "Error: keyspaces_glue_cli.py not found in $SCRIPT_DIR. Run from the aws-glue directory." >&2
     exit 1
 fi
 

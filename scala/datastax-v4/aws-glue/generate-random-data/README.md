@@ -4,7 +4,7 @@ This example provides a Scala script for generating random data and importing it
 
 ### Prerequisites
 
-* Run `./keyspaces-glue bootstrap` from the [parent directory](../) to set up infrastructure and deploy all Glue jobs
+* Run `./keyspaces-bulk-cli bootstrap` from the [parent directory](../) to set up infrastructure and deploy all Glue jobs
 * Create the target table first
 
 ### Create Table
@@ -36,14 +36,14 @@ WITH CUSTOM_PROPERTIES = {
 ### Running Generate
 
 ```bash
-./keyspaces-glue generate \
+./keyspaces-bulk-cli generate \
   --keyspace aws \
   --table my_table_example
 ```
 
 Override workers for faster generation:
 ```bash
-./keyspaces-glue generate \
+./keyspaces-bulk-cli generate \
   --keyspace aws \
   --table my_table_example \
   --workers 10

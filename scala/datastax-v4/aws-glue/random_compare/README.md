@@ -4,7 +4,7 @@ This example extends the [incremental export](../incremental-export-to-s3) with 
 
 ### Prerequisites
 
-* Run `./keyspaces-glue bootstrap` from the [parent directory](../) to set up infrastructure and deploy all Glue jobs
+* Run `./keyspaces-bulk-cli bootstrap` from the [parent directory](../) to set up infrastructure and deploy all Glue jobs
 * Two existing snapshots in S3 (created by the export job)
 
 ### S3 Output Structure
@@ -18,16 +18,16 @@ s3://{bucket}/export/{keyspace}/{table}/incremental/year=YYYY/month=MM/day=DD/ho
 
 ```bash
 # 1. Bootstrap
-./keyspaces-glue bootstrap --stack aksglue
+./keyspaces-bulk-cli bootstrap --stack aksglue
 
 # 2. First export (baseline)
-./keyspaces-glue export --keyspace mykeyspace --table mytable --s3-uri s3://my-bucket
+./keyspaces-bulk-cli export --keyspace mykeyspace --table mytable --s3-uri s3://my-bucket
 
 # 3. Second export (after changes)
-./keyspaces-glue export --keyspace mykeyspace --table mytable --s3-uri s3://my-bucket
+./keyspaces-bulk-cli export --keyspace mykeyspace --table mytable --s3-uri s3://my-bucket
 
 # 4. Compute incremental diff
-./keyspaces-glue incremental-export \
+./keyspaces-bulk-cli incremental-export \
   --keyspace mykeyspace --table mytable \
   --past-uri s3://my-bucket/export/mykeyspace/mytable/snapshot/year=2025/month=01/day=01/hour=00/minute=00 \
   --current-uri s3://my-bucket/export/mykeyspace/mytable/snapshot/year=2025/month=01/day=02/hour=00/minute=00 \
@@ -35,7 +35,7 @@ s3://{bucket}/export/{keyspace}/{table}/incremental/year=YYYY/month=MM/day=DD/ho
   --distinct-keys "partition_id,row_id"
 
 # 5. Import the diff into a target table
-./keyspaces-glue incremental-import \
+./keyspaces-bulk-cli incremental-import \
   --keyspace target_keyspace --table mytable \
   --s3-uri s3://my-bucket/export/mykeyspace/mytable/incremental/year=2025/month=01/day=02/hour=00/minute=30 \
   --distinct-keys "partition_id,row_id"

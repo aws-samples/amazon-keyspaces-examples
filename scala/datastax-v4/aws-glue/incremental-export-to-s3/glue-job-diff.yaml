@@ -108,7 +108,7 @@ Resources:
       #LogUri: String
       #MaxCapacity: Double
       #MaxRetries: Double
-      Name: !Sub ['AmazonKeyspacesIncrementalExportToS3-${STACKNAME}', STACKNAME: !Join [ "-", [!Ref ParentStack, !Ref  AWS::StackName]]]
+      Name: !Sub 'AmazonKeyspacesIncrementalExportToS3-${ParentStack}'
       #NonOverridableArguments: Json
       #NotificationProperty: 
       #NotificationProperty
