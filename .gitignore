@@ -3,3 +3,4 @@ scala/datastax-v4/aws-glue/.venv/
 **/*.DS_Store
 **/__pycache__/
 *.egg-info/
+scala/datastax-v4/aws-glue/.keyspaces-glue.json
