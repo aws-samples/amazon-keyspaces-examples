@@ -8,7 +8,7 @@ This example depends on previous exports created by the [export example](../expo
 
 ### Prerequisites
 
-* Run `./keyspaces-glue bootstrap` from the [parent directory](../) to set up infrastructure and deploy all Glue jobs
+* Run `./keyspaces-bulk-cli bootstrap` from the [parent directory](../) to set up infrastructure and deploy all Glue jobs
 * Two existing snapshots in S3 (created by the export job)
 
 ### S3 Output Structure
@@ -21,7 +21,7 @@ s3://{bucket}/export/{keyspace}/{table}/incremental/year=YYYY/month=MM/day=DD/ho
 ### Running Incremental Export
 
 ```bash
-./keyspaces-glue incremental-export \
+./keyspaces-bulk-cli incremental-export \
   --keyspace mykeyspace \
   --table mytable \
   --past-uri s3://my-bucket/export/mykeyspace/mytable/snapshot/year=2025/month=01/day=01/hour=00/minute=00 \
@@ -36,7 +36,7 @@ s3://{bucket}/export/{keyspace}/{table}/incremental/year=YYYY/month=MM/day=DD/ho
 Apply an incremental diff to a Keyspaces table:
 
 ```bash
-./keyspaces-glue incremental-import \
+./keyspaces-bulk-cli incremental-import \
   --keyspace mykeyspace \
   --table mytable \
   --s3-uri s3://my-bucket/export/mykeyspace/mytable/incremental/year=2025/month=01/day=15/hour=12/minute=00 \
@@ -92,16 +92,16 @@ Chain export, incremental export, and incremental import using Glue workflows tr
 
 ```bash
 # 1. Bootstrap
-./keyspaces-glue bootstrap --stack incremental
+./keyspaces-bulk-cli bootstrap --stack incremental
 
 # 2. First export (creates baseline snapshot)
-./keyspaces-glue export --keyspace mykeyspace --table mytable --s3-uri s3://my-bucket
+./keyspaces-bulk-cli export --keyspace mykeyspace --table mytable --s3-uri s3://my-bucket
 
 # 3. Second export (creates new snapshot after data changes)
-./keyspaces-glue export --keyspace mykeyspace --table mytable --s3-uri s3://my-bucket
+./keyspaces-bulk-cli export --keyspace mykeyspace --table mytable --s3-uri s3://my-bucket
 
 # 4. Compute diff between the two snapshots
-./keyspaces-glue incremental-export \
+./keyspaces-bulk-cli incremental-export \
   --keyspace mykeyspace --table mytable \
   --past-uri s3://my-bucket/export/mykeyspace/mytable/snapshot/year=2025/month=01/day=01/hour=00/minute=00 \
   --current-uri s3://my-bucket/export/mykeyspace/mytable/snapshot/year=2025/month=01/day=02/hour=00/minute=00 \
@@ -109,7 +109,7 @@ Chain export, incremental export, and incremental import using Glue workflows tr
   --distinct-keys "id,create_date"
 
 # 5. Apply the diff to a target table
-./keyspaces-glue incremental-import \
+./keyspaces-bulk-cli incremental-import \
   --keyspace target_keyspace --table mytable \
   --s3-uri s3://my-bucket/export/mykeyspace/mytable/incremental/year=2025/month=01/day=02/hour=00/minute=30 \
   --distinct-keys "id,create_date"

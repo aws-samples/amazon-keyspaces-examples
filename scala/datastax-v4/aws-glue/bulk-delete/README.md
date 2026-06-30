@@ -4,7 +4,7 @@ This example provides a Scala script for bulk deleting data from Amazon Keyspace
 
 ### Prerequisites
 
-* Run `./keyspaces-glue bootstrap` from the [parent directory](../) to set up infrastructure and deploy all Glue jobs
+* Run `./keyspaces-bulk-cli bootstrap` from the [parent directory](../) to set up infrastructure and deploy all Glue jobs
 
 ### S3 Backup Structure
 
@@ -18,7 +18,7 @@ s3://{bucket}/export/{keyspace}/{table}/bulk-delete/year=YYYY/month=MM/day=DD/ho
 
 Delete all rows (truncate) with backup:
 ```bash
-./keyspaces-glue bulk-delete \
+./keyspaces-bulk-cli bulk-delete \
   --keyspace mykeyspace \
   --table mytable \
   --s3-uri s3://my-bucket
@@ -26,7 +26,7 @@ Delete all rows (truncate) with backup:
 
 Delete with a filter condition:
 ```bash
-./keyspaces-glue bulk-delete \
+./keyspaces-bulk-cli bulk-delete \
   --keyspace mykeyspace \
   --table mytable \
   --where-clause "event_date < '2024-01-01'" \
@@ -35,7 +35,7 @@ Delete with a filter condition:
 
 Range delete by partial key:
 ```bash
-./keyspaces-glue bulk-delete \
+./keyspaces-bulk-cli bulk-delete \
   --keyspace mykeyspace \
   --table mytable \
   --distinct-keys "partition_key" \

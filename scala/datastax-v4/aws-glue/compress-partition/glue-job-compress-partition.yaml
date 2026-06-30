@@ -48,7 +48,7 @@ Resources:
       Command:
         Name: glueetl
         ScriptLocation: !Sub
-        - "s3://${IMPORTBUCKETNAME}/scripts/${ParentStack}-${AWS::StackName}-compress-partition.scala"
+        - "s3://${IMPORTBUCKETNAME}/scripts/${ParentStack}-compress-partition.scala"
         - IMPORTBUCKETNAME:
             Fn::ImportValue:
               !Sub 'KeyspacesBucketNameExport-${ParentStack}'
@@ -94,7 +94,7 @@ Resources:
       ExecutionProperty:
         MaxConcurrentRuns: 3
       GlueVersion: "3.0"
-      Name: !Sub ['AmazonKeyspacesCompressPartition-${STACKNAME}', STACKNAME: !Ref AWS::StackName]
+      Name: !Sub 'AmazonKeyspacesCompressPartition-${ParentStack}'
       NumberOfWorkers: 2
       Role:
         Fn::ImportValue:

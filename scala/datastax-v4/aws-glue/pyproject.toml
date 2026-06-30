@@ -3,7 +3,7 @@ requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "keyspaces-glue"
+name = "keyspaces-bulk-cli"
 version = "0.1.0"
 description = "CLI for Amazon Keyspaces AWS Glue jobs"
 requires-python = ">=3.8"
@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.scripts]
-keyspaces-glue = "keyspaces_glue_cli:app"
+keyspaces-bulk-cli = "keyspaces_glue_cli:app"
 
 [tool.setuptools]
 py-modules = ["keyspaces_glue_cli"]

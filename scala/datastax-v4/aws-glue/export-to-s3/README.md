@@ -4,7 +4,7 @@ This example provides a Scala script for exporting Amazon Keyspaces table data t
 
 ### Prerequisites
 
-* Run `./keyspaces-glue bootstrap` from the [parent directory](../) to set up infrastructure and deploy all Glue jobs
+* Run `./keyspaces-bulk-cli bootstrap` from the [parent directory](../) to set up infrastructure and deploy all Glue jobs
 
 ### S3 Output Structure
 
@@ -17,7 +17,7 @@ s3://{bucket}/export/{keyspace}/{table}/snapshot/year=YYYY/month=MM/day=DD/hour=
 ### Running the Export
 
 ```bash
-./keyspaces-glue export \
+./keyspaces-bulk-cli export \
   --keyspace mykeyspace \
   --table mytable \
   --s3-uri s3://my-bucket \
@@ -26,7 +26,7 @@ s3://{bucket}/export/{keyspace}/{table}/snapshot/year=YYYY/month=MM/day=DD/hour=
 
 With a where clause to export a subset:
 ```bash
-./keyspaces-glue export \
+./keyspaces-bulk-cli export \
   --keyspace mykeyspace \
   --table mytable \
   --s3-uri s3://my-bucket \
@@ -35,7 +35,7 @@ With a where clause to export a subset:
 
 Override workers for large tables:
 ```bash
-./keyspaces-glue export \
+./keyspaces-bulk-cli export \
   --keyspace production \
   --table orders \
   --s3-uri s3://my-bucket \

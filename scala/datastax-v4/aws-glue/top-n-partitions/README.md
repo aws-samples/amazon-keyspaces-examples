@@ -4,12 +4,12 @@ This example provides a Scala script for finding the partitions with the most ro
 
 ### Prerequisites
 
-* Run `./keyspaces-glue bootstrap` from the [parent directory](../) to set up infrastructure and deploy all Glue jobs
+* Run `./keyspaces-bulk-cli bootstrap` from the [parent directory](../) to set up infrastructure and deploy all Glue jobs
 
 ### Running Top Partitions
 
 ```bash
-./keyspaces-glue top-partitions \
+./keyspaces-bulk-cli top-partitions \
   --keyspace mykeyspace \
   --table mytable \
   --group-by "user_id" \
@@ -19,7 +19,7 @@ This example provides a Scala script for finding the partitions with the most ro
 
 With a where clause to analyze a subset:
 ```bash
-./keyspaces-glue top-partitions \
+./keyspaces-bulk-cli top-partitions \
   --keyspace mykeyspace \
   --table mytable \
   --group-by "user_id" \
@@ -30,7 +30,7 @@ With a where clause to analyze a subset:
 
 Multi-column partition key:
 ```bash
-./keyspaces-glue top-partitions \
+./keyspaces-bulk-cli top-partitions \
   --keyspace mykeyspace \
   --table mytable \
   --group-by "tenant_id,region" \
@@ -55,12 +55,12 @@ Multi-column partition key:
 Results are logged to CloudWatch. Retrieve them with:
 
 ```bash
-./keyspaces-glue logs top-partitions --log-type error
+./keyspaces-bulk-cli logs top-partitions --log-type error
 ```
 
 For a specific run:
 ```bash
-./keyspaces-glue logs top-partitions --run-id jr_abc123 --log-type error
+./keyspaces-bulk-cli logs top-partitions --run-id jr_abc123 --log-type error
 ```
 
 Example output:

@@ -4,14 +4,14 @@ This example provides a Scala script for modifying TTL values across many or all
 
 ### Prerequisites
 
-* Run `./keyspaces-glue bootstrap` from the [parent directory](../) to set up infrastructure and deploy all Glue jobs
+* Run `./keyspaces-bulk-cli bootstrap` from the [parent directory](../) to set up infrastructure and deploy all Glue jobs
 * TTL must be enabled on the Keyspaces table
 
 ### Running Modify TTL
 
 Add 30 days to existing TTL:
 ```bash
-./keyspaces-glue modify-ttl \
+./keyspaces-bulk-cli modify-ttl \
   --keyspace mykeyspace \
   --table mytable \
   --ttl-field value \
@@ -20,7 +20,7 @@ Add 30 days to existing TTL:
 
 Subtract 1 year from TTL:
 ```bash
-./keyspaces-glue modify-ttl \
+./keyspaces-bulk-cli modify-ttl \
   --keyspace mykeyspace \
   --table mytable \
   --ttl-field value \
@@ -29,7 +29,7 @@ Subtract 1 year from TTL:
 
 Modify TTL only for a subset of rows:
 ```bash
-./keyspaces-glue modify-ttl \
+./keyspaces-bulk-cli modify-ttl \
   --keyspace mykeyspace \
   --table mytable \
   --ttl-field value \

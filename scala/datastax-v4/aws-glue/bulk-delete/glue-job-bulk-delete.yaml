@@ -60,10 +60,10 @@ Resources:
     Properties: 
       Command:
         Name: glueetl
-        ScriptLocation: !Sub 
-        - "s3://${IMPORTBUCKETNAME}/scripts/${ParentStack}-${AWS::StackName}-bulk-delete-sample.scala"
-        - IMPORTBUCKETNAME: 
-            Fn::ImportValue: 
+        ScriptLocation: !Sub
+        - "s3://${IMPORTBUCKETNAME}/scripts/${ParentStack}-bulk-delete.scala"
+        - IMPORTBUCKETNAME:
+            Fn::ImportValue:
               !Sub 'KeyspacesBucketNameExport-${ParentStack}'
       DefaultArguments: 
         "--job-language": "scala"
@@ -116,7 +116,7 @@ Resources:
       #LogUri: String
       #MaxCapacity: Double
       #MaxRetries: Double
-      Name: !Sub ['AmazonKeyspacesBulkDelete-${STACKNAME}', STACKNAME: !Ref AWS::StackName]
+      Name: !Sub 'AmazonKeyspacesBulkDelete-${ParentStack}'
       #NonOverridableArguments: Json
       #NotificationProperty: 
       #NotificationProperty

@@ -12,7 +12,7 @@ Wide partitions with many clustering rows can be expensive to store and read. Th
 
 ### Prerequisites
 
-* Run `./keyspaces-glue bootstrap` from the [parent directory](../) to set up infrastructure and deploy all Glue jobs
+* Run `./keyspaces-bulk-cli bootstrap` from the [parent directory](../) to set up infrastructure and deploy all Glue jobs
 * The target table must already exist with the correct schema
 
 ### How It Works
@@ -42,7 +42,7 @@ All rows sharing a partition key are serialized to JSON, compressed, and stored 
 
 Partition-level compression:
 ```bash
-./keyspaces-glue compress-partition \
+./keyspaces-bulk-cli compress-partition \
   --keyspace mykeyspace \
   --source-table events \
   --target-table events_compressed \
@@ -51,7 +51,7 @@ Partition-level compression:
 
 Group by a clustering column:
 ```bash
-./keyspaces-glue compress-partition \
+./keyspaces-bulk-cli compress-partition \
   --keyspace mykeyspace \
   --source-table tableA \
   --target-table tableB \
@@ -61,7 +61,7 @@ Group by a clustering column:
 
 Compress only older data:
 ```bash
-./keyspaces-glue compress-partition \
+./keyspaces-bulk-cli compress-partition \
   --keyspace mykeyspace \
   --source-table events \
   --target-table events_compressed \

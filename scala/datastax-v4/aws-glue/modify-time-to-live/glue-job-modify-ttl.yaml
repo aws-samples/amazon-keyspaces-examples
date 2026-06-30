@@ -51,10 +51,10 @@ Resources:
     Properties: 
       Command:
         Name: glueetl
-        ScriptLocation: !Sub 
-        - "s3://${IMPORTBUCKETNAME}/scripts/${ParentStack}-${AWS::StackName}-modify-ttl.scala"
-        - IMPORTBUCKETNAME: 
-            Fn::ImportValue: 
+        ScriptLocation: !Sub
+        - "s3://${IMPORTBUCKETNAME}/scripts/${ParentStack}-modify-ttl.scala"
+        - IMPORTBUCKETNAME:
+            Fn::ImportValue:
               !Sub 'KeyspacesBucketNameExport-${ParentStack}'
       DefaultArguments: 
         "--job-language": "scala"
@@ -103,7 +103,7 @@ Resources:
       #LogUri: String
       #MaxCapacity: Double
       #MaxRetries: Double
-      Name: !Sub ['AmazonKeyspacesModifyTTL-${STACKNAME}', STACKNAME: !Join [ "-", [!Ref ParentStack, !Ref  AWS::StackName]]]
+      Name: !Sub 'AmazonKeyspacesModifyTTL-${ParentStack}'
       #NonOverridableArguments: Json
       #NotificationProperty: 
       #NotificationProperty

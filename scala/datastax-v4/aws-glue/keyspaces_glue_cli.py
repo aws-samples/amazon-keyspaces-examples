@@ -13,14 +13,14 @@ from rich.console import Console
 from rich.table import Table
 
 app = typer.Typer(
-    name="keyspaces-glue",
+    name="keyspaces-bulk-cli",
     help="CLI for Amazon Keyspaces AWS Glue jobs. Launch, monitor, and manage Glue job runs.",
     no_args_is_help=True,
 )
 
 console = Console()
 
-CONFIG_FILE_NAME = ".keyspaces-glue.json"
+CONFIG_FILE_NAME = ".keyspaces-bulk-cli.json"
 DRIVER_CONF_DEFAULT = "keyspaces-application.conf"
 FORMAT_DEFAULT = "parquet"
 KEYSPACE_DEFAULT = "mykeyspace"
@@ -33,18 +33,22 @@ JOB_NAME_PREFIXES = [
     "AmazonKeyspacesBulkDelete-",
     "AmazonKeyspacesModifyTTL-",
     "AmazonKeyspacesIncrementalExportToS3-",
+    "AmazonKeyspacesIncrementalImportToS3-",
+    "AmazonKeyspacesTopPartitions-",
+    "AmazonKeyspacesCompressPartition-",
+    "AmazonKeyspacesGenerate-",
 ]
 
 JOB_NAME_TEMPLATES = {
-    "export": "AmazonKeyspacesExportToS3-{stack}-{stack}-export",
-    "import": "AmazonKeyspacesImportFromS3-{stack}-{stack}-import",
-    "count": "AmazonKeyspacesCount-{stack}-count",
-    "bulk-delete": "AmazonKeyspacesBulkDelete-{stack}-bulk-delete",
-    "modify-ttl": "AmazonKeyspacesModifyTTL-{stack}-{stack}-modify-ttl",
-    "incremental-export": "AmazonKeyspacesIncrementalExportToS3-{stack}-{stack}-inc-export",
-    "incremental-import": "AmazonKeyspacesIncrementalImportToS3-{stack}-{stack}-inc-import",
-    "top-partitions": "AmazonKeyspacesTopPartitions-{stack}-top-partitions",
-    "compress-partition": "AmazonKeyspacesCompressPartition-{stack}-compress-partition",
+    "export": "AmazonKeyspacesExportToS3-{stack}",
+    "import": "AmazonKeyspacesImportFromS3-{stack}",
+    "count": "AmazonKeyspacesCount-{stack}",
+    "bulk-delete": "AmazonKeyspacesBulkDelete-{stack}",
+    "modify-ttl": "AmazonKeyspacesModifyTTL-{stack}",
+    "incremental-export": "AmazonKeyspacesIncrementalExportToS3-{stack}",
+    "incremental-import": "AmazonKeyspacesIncrementalImportToS3-{stack}",
+    "top-partitions": "AmazonKeyspacesTopPartitions-{stack}",
+    "compress-partition": "AmazonKeyspacesCompressPartition-{stack}",
     "generate": "AmazonKeyspacesGenerate-{stack}",
 }
 
@@ -53,35 +57,35 @@ JOB_DEPLOY_CONFIG = {
         "cfn_stack_suffix": "export",
         "template": "export-to-s3/glue-job-export-to-s3.yaml",
         "script_src": "export-to-s3/export-sample.scala",
-        "script_key": "{stack}-{stack}-export-export.scala",
+        "script_key": "{stack}-export.scala",
         "params": ["KeyspaceName", "TableName", "S3URI", "FORMAT"],
     },
     "import": {
         "cfn_stack_suffix": "import",
         "template": "import-from-s3/glue-job-import-from-s3.yaml",
         "script_src": "import-from-s3/import-sample.scala",
-        "script_key": "{stack}-{stack}-import-import.scala",
+        "script_key": "{stack}-import.scala",
         "params": ["KeyspaceName", "TableName", "S3URI", "FORMAT"],
     },
     "count": {
         "cfn_stack_suffix": "count",
         "template": "count-table-rows/glue-job-count-rows.yaml",
         "script_src": "count-table-rows/count-example.scala",
-        "script_key": "{stack}-{stack}-count-count.scala",
+        "script_key": "{stack}-count.scala",
         "params": ["KeyspaceName", "TableName"],
     },
     "bulk-delete": {
         "cfn_stack_suffix": "bulk-delete",
         "template": "bulk-delete/glue-job-bulk-delete.yaml",
         "script_src": "bulk-delete/bulk-delete-sample.scala",
-        "script_key": "{stack}-{stack}-bulk-delete-bulk-delete-sample.scala",
+        "script_key": "{stack}-bulk-delete.scala",
         "params": ["KeyspaceName", "TableName", "S3URI", "FORMAT"],
     },
     "modify-ttl": {
         "cfn_stack_suffix": "modify-ttl",
         "template": "modify-time-to-live/glue-job-modify-ttl.yaml",
         "script_src": "modify-time-to-live/modify-time-to-live.scala",
-        "script_key": "{stack}-{stack}-modify-ttl-modify-ttl.scala",
+        "script_key": "{stack}-modify-ttl.scala",
         "params": ["KeyspaceName", "TableName"],
     },
     "incremental-export": {
@@ -102,14 +106,14 @@ JOB_DEPLOY_CONFIG = {
         "cfn_stack_suffix": "top-partitions",
         "template": "top-n-partitions/glue-job-top-partitions.yaml",
         "script_src": "top-n-partitions/top-partition-example.scala",
-        "script_key": "{stack}-{stack}-top-partitions-top-partitions.scala",
+        "script_key": "{stack}-top-partitions.scala",
         "params": ["KeyspaceName", "TableName", "GroupBy", "MaxResults", "MinSize"],
     },
     "compress-partition": {
         "cfn_stack_suffix": "compress-partition",
         "template": "compress-partition/glue-job-compress-partition.yaml",
         "script_src": "compress-partition/compress-partition.scala",
-        "script_key": "{stack}-{stack}-compress-partition-compress-partition.scala",
+        "script_key": "{stack}-compress-partition.scala",
         "params": ["KeyspaceName", "SourceTable", "TargetTable", "Compression"],
     },
 }
@@ -148,17 +152,16 @@ def _discover_stack_from_glue(region: Optional[str] = None, profile: Optional[st
             for prefix in JOB_NAME_PREFIXES:
                 if name.startswith(prefix):
                     suffix = name[len(prefix):]
-                    # Pattern: {stack}-{stack}-<type> or {stack}-<type>
-                    # Extract the first segment as the stack name
-                    parts = suffix.split("-")
-                    if parts:
-                        stacks.add(parts[0])
+                    # Job name pattern: AmazonKeyspaces{Type}-{stack}
+                    # The suffix after the prefix is the stack name
+                    if suffix:
+                        stacks.add(suffix)
                     break
         if len(stacks) == 1:
             return stacks.pop()
         if len(stacks) > 1:
             console.print(f"[yellow]Multiple stacks detected: {', '.join(sorted(stacks))}[/yellow]")
-            console.print("[yellow]Use --stack to specify, or run 'keyspaces-glue config --stack <name>' to save.[/yellow]")
+            console.print("[yellow]Use --stack to specify, or run 'keyspaces-bulk-cli config --stack <name>' to save.[/yellow]")
             return None
     except Exception:
         return None
@@ -187,7 +190,7 @@ def resolve_stack(stack_flag: Optional[str], region: Optional[str] = None, profi
     console.print("Set it with one of:")
     console.print("  --stack <name>")
     console.print("  export KEYSPACES_GLUE_STACK=<name>")
-    console.print("  keyspaces-glue config --stack <name>")
+    console.print("  keyspaces-bulk-cli config --stack <name>")
     raise typer.Exit(1)
 
 
@@ -335,8 +338,8 @@ def _check_command_exists(cmd: str) -> bool:
 @app.command()
 def bootstrap(
     stack: str = typer.Option("aksglue", help="CloudFormation stack name"),
-    bucket: Optional[str] = typer.Option(None, help="S3 bucket name (default: amazon-keyspaces-glue-{stack}-{account_id})"),
-    role_name: Optional[str] = typer.Option(None, help="IAM role name (default: amazon-keyspaces-glue-servcie-role-{stack})"),
+    bucket: Optional[str] = typer.Option(None, help="S3 bucket name (default: amazon-keyspaces-bulk-cli-{stack}-{account_id})"),
+    role_name: Optional[str] = typer.Option(None, help="IAM role name (default: amazon-keyspaces-bulk-cli-servcie-role-{stack})"),
     keyspace: str = typer.Option(KEYSPACE_DEFAULT, help="Default keyspace for jobs"),
     table: str = typer.Option(TABLE_DEFAULT, help="Default table for jobs"),
     s3_uri: Optional[str] = typer.Option(None, help="S3 URI for export/import (default: s3://{bucket}/export)"),
@@ -383,8 +386,8 @@ def bootstrap(
         raise typer.Exit(1)
 
     # Resolve defaults
-    bucket_name = bucket or f"amazon-keyspaces-glue-{stack}-{account_id}"
-    iam_role_name = role_name or f"amazon-keyspaces-glue-servcie-role-{stack}"
+    bucket_name = bucket or f"amazon-keyspaces-bulk-cli-{stack}-{account_id}"
+    iam_role_name = role_name or f"amazon-keyspaces-bulk-cli-servcie-role-{stack}"
     export_s3_uri = s3_uri or f"s3://{bucket_name}/export"
 
     console.print(f"\n[bold]Keyspaces Glue Bootstrap[/bold]")
@@ -512,7 +515,7 @@ def bootstrap(
     export_template = script_dir / "export-to-s3" / "glue-job-export-to-s3.yaml"
 
     s3_client.upload_file(
-        str(export_script), bucket_name, f"scripts/{stack}-{export_stack_name}-export.scala"
+        str(export_script), bucket_name, f"scripts/{stack}-export.scala"
     )
 
     try:
@@ -544,7 +547,7 @@ def bootstrap(
     import_template = script_dir / "import-from-s3" / "glue-job-import-from-s3.yaml"
 
     s3_client.upload_file(
-        str(import_script), bucket_name, f"scripts/{stack}-{import_stack_name}-import.scala"
+        str(import_script), bucket_name, f"scripts/{stack}-import.scala"
     )
 
     try:
@@ -574,59 +577,13 @@ def bootstrap(
     _deploy_child_stack(cf_client, s3_client, script_dir, bucket_name, stack,
                         "count", "count-table-rows/glue-job-count-rows.yaml",
                         "count-table-rows/count-example.scala",
-                        f"scripts/{stack}-{stack}-count-count.scala",
-                        [("KeyspaceName", keyspace), ("TableName", table)])
-
-    # Step 7: Deploy Bulk Delete Glue job
-    console.print("\n[bold]Step 7:[/bold] Deploying Bulk Delete Glue job...")
-    _deploy_child_stack(cf_client, s3_client, script_dir, bucket_name, stack,
-                        "bulk-delete", "bulk-delete/glue-job-bulk-delete.yaml",
-                        "bulk-delete/bulk-delete-sample.scala",
-                        f"scripts/{stack}-{stack}-bulk-delete-bulk-delete-sample.scala",
-                        [("KeyspaceName", keyspace), ("TableName", table),
-                         ("S3URI", export_s3_uri), ("FORMAT", format)])
-
-    # Step 8: Deploy Modify TTL Glue job
-    console.print("\n[bold]Step 8:[/bold] Deploying Modify TTL Glue job...")
-    _deploy_child_stack(cf_client, s3_client, script_dir, bucket_name, stack,
-                        "modify-ttl", "modify-time-to-live/glue-job-modify-ttl.yaml",
-                        "modify-time-to-live/modify-time-to-live.scala",
-                        f"scripts/{stack}-{stack}-modify-ttl-modify-ttl.scala",
-                        [("KeyspaceName", keyspace), ("TableName", table)])
-
-    # Step 9: Deploy Incremental Export Glue job
-    console.print("\n[bold]Step 9:[/bold] Deploying Incremental Export Glue job...")
-    _deploy_child_stack(cf_client, s3_client, script_dir, bucket_name, stack,
-                        "inc-export", "incremental-export-to-s3/glue-job-diff.yaml",
-                        "incremental-export-to-s3/incremental-export-sample.scala",
-                        "scripts/incremental-export-sample.scala",
-                        [("KeyspaceName", keyspace), ("TableName", table),
-                         ("S3URI", export_s3_uri), ("FORMAT", format),
-                         ("DISTINCTKEYS", "key,value"),
-                         ("PASTURI", "s3://pasturi"), ("CURRENTURI", "s3://currenturi")])
-
-    # Step 10: Deploy Incremental Import Glue job
-    console.print("\n[bold]Step 10:[/bold] Deploying Incremental Import Glue job...")
-    _deploy_child_stack(cf_client, s3_client, script_dir, bucket_name, stack,
-                        "inc-import", "incremental-export-to-s3/glue-job-incremental-import.yaml",
-                        "incremental-export-to-s3/incremental-import-sample.scala",
-                        "scripts/incremental-import-sample.scala",
-                        [("KeyspaceName", keyspace), ("TableName", table),
-                         ("S3URI", export_s3_uri), ("FORMAT", format),
-                         ("DISTINCTKEYS", "key,value")])
-
-    # Step 11: Deploy Top N Partitions Glue job
-    console.print("\n[bold]Step 11:[/bold] Deploying Top N Partitions Glue job...")
-    _deploy_child_stack(cf_client, s3_client, script_dir, bucket_name, stack,
-                        "top-partitions", "top-n-partitions/glue-job-top-partitions.yaml",
-                        "top-n-partitions/top-partition-example.scala",
-                        f"scripts/{stack}-{stack}-top-partitions-top-partitions.scala",
+                        f"scripts/{stack}-count.scala",
                         [("KeyspaceName", keyspace), ("TableName", table)])
 
     _save_stack_config(stack)
     console.print(f"\n[bold green]Bootstrap complete![/bold green]")
     console.print(f"  Stack '{stack}' saved to config. You can now run jobs:")
-    console.print(f"  python3 keyspaces_glue_cli.py run export --keyspace {keyspace} --table {table} --s3-uri {export_s3_uri}")
+    console.print(f"  ./keyspaces-bulk-cli export --keyspace {keyspace} --table {table} --s3-uri {export_s3_uri}")
 
 
 def _deploy_child_stack(cf_client, s3_client, script_dir, bucket_name, parent_stack,
@@ -678,7 +635,7 @@ def config(
     region: Optional[str] = typer.Option(None, help="AWS region (for discovery)"),
     profile: Optional[str] = typer.Option(None, help="AWS profile (for discovery)"),
 ):
-    """Configure CLI defaults. Saves to .keyspaces-glue.json in the current directory."""
+    """Configure CLI defaults. Saves to .keyspaces-bulk-cli.json in the current directory."""
     if show:
         cfg = _read_config()
         env_stack = os.environ.get("KEYSPACES_GLUE_STACK")
@@ -845,6 +802,7 @@ def runs(
     module: str = typer.Argument(help="Module name (e.g. count, export, compress-partition)"),
     job_name: Optional[str] = typer.Option(None, help="Override: full Glue job name"),
     limit: int = typer.Option(10, help="Max runs to display"),
+    output_json: bool = typer.Option(False, "--json", help="Output as JSON with job arguments (useful for triggers)"),
     region: Optional[str] = typer.Option(None, help="AWS region"),
     profile: Optional[str] = typer.Option(None, help="AWS profile"),
 ):
@@ -860,8 +818,26 @@ def runs(
     client = get_glue_client(region, profile)
     response = client.get_job_runs(JobName=resolved_name, MaxResults=limit)
 
-    table = Table(title=f"Recent Runs: {job_name}")
-    table.add_column("Run ID")
+    if output_json:
+        runs_output = []
+        for run in response.get("JobRuns", []):
+            started = run.get("StartedOn")
+            runs_output.append({
+                "JobName": run.get("JobName", resolved_name),
+                "RunId": run.get("Id", ""),
+                "State": run.get("JobRunState", ""),
+                "Started": started.isoformat() if started else None,
+                "Duration": run.get("ExecutionTime", 0),
+                "Workers": run.get("NumberOfWorkers"),
+                "WorkerType": run.get("WorkerType", ""),
+                "Arguments": run.get("Arguments", {}),
+            })
+        print(json.dumps(runs_output, indent=2))
+        return
+
+    table = Table(title=f"Recent Runs: {resolved_name}")
+    table.add_column("Job Name", overflow="fold")
+    table.add_column("Run ID", overflow="fold")
     table.add_column("State")
     table.add_column("Started")
     table.add_column("Duration")
@@ -872,6 +848,7 @@ def runs(
         started_str = started.strftime("%Y-%m-%d %H:%M") if started else ""
         duration = f"{run.get('ExecutionTime', 0)}s"
         table.add_row(
+            run.get("JobName", resolved_name),
             run.get("Id", ""),
             run.get("JobRunState", ""),
             started_str,
@@ -879,7 +856,8 @@ def runs(
             str(run.get("NumberOfWorkers", "")),
         )
 
-    console.print(table)
+    wide_console = Console(width=max(console.width, 140))
+    wide_console.print(table)
 
 
 @app.command()
@@ -942,7 +920,7 @@ def run_export(
     run_id = start_job_run(client, resolved_name, arguments, workers)
     console.print(f"[green]Started export job run:[/green] {run_id}")
     console.print(f"  Job: {resolved_name}")
-    console.print(f"  Check status: keyspaces-glue status '{resolved_name}' '{run_id}'")
+    console.print(f"  Check status: keyspaces-bulk-cli status '{resolved_name}' '{run_id}'")
 
 
 @app.command("import")
@@ -973,7 +951,7 @@ def run_import(
     run_id = start_job_run(client, resolved_name, arguments, workers)
     console.print(f"[green]Started import job run:[/green] {run_id}")
     console.print(f"  Job: {resolved_name}")
-    console.print(f"  Check status: keyspaces-glue status '{resolved_name}' '{run_id}'")
+    console.print(f"  Check status: keyspaces-bulk-cli status '{resolved_name}' '{run_id}'")
 
 
 @app.command("count")
@@ -1002,7 +980,7 @@ def run_count(
     run_id = start_job_run(client, resolved_name, arguments, workers)
     console.print(f"[green]Started count job run:[/green] {run_id}")
     console.print(f"  Job: {resolved_name}")
-    console.print(f"  Check status: keyspaces-glue status '{resolved_name}' '{run_id}'")
+    console.print(f"  Check status: keyspaces-bulk-cli status '{resolved_name}' '{run_id}'")
 
 
 @app.command("bulk-delete")
@@ -1037,7 +1015,7 @@ def run_bulk_delete(
     run_id = start_job_run(client, resolved_name, arguments, workers)
     console.print(f"[green]Started bulk-delete job run:[/green] {run_id}")
     console.print(f"  Job: {resolved_name}")
-    console.print(f"  Check status: keyspaces-glue status '{resolved_name}' '{run_id}'")
+    console.print(f"  Check status: keyspaces-bulk-cli status '{resolved_name}' '{run_id}'")
 
 
 @app.command("modify-ttl")
@@ -1068,7 +1046,7 @@ def run_modify_ttl(
     run_id = start_job_run(client, resolved_name, arguments, workers)
     console.print(f"[green]Started modify-ttl job run:[/green] {run_id}")
     console.print(f"  Job: {resolved_name}")
-    console.print(f"  Check status: keyspaces-glue status '{resolved_name}' '{run_id}'")
+    console.print(f"  Check status: keyspaces-bulk-cli status '{resolved_name}' '{run_id}'")
 
 
 @app.command("incremental-export")
@@ -1105,7 +1083,7 @@ def run_incremental_export(
     run_id = start_job_run(client, resolved_name, arguments, workers)
     console.print(f"[green]Started incremental-export job run:[/green] {run_id}")
     console.print(f"  Job: {resolved_name}")
-    console.print(f"  Check status: keyspaces-glue status '{resolved_name}' '{run_id}'")
+    console.print(f"  Check status: keyspaces-bulk-cli status '{resolved_name}' '{run_id}'")
 
 
 @app.command("incremental-import")
@@ -1138,7 +1116,7 @@ def run_incremental_import(
     run_id = start_job_run(client, resolved_name, arguments, workers)
     console.print(f"[green]Started incremental-import job run:[/green] {run_id}")
     console.print(f"  Job: {resolved_name}")
-    console.print(f"  Check status: keyspaces-glue status '{resolved_name}' '{run_id}'")
+    console.print(f"  Check status: keyspaces-bulk-cli status '{resolved_name}' '{run_id}'")
 
 
 @app.command("generate")
@@ -1165,7 +1143,7 @@ def run_generate(
     run_id = start_job_run(client, resolved_name, arguments, workers)
     console.print(f"[green]Started generate job run:[/green] {run_id}")
     console.print(f"  Job: {resolved_name}")
-    console.print(f"  Check status: keyspaces-glue status '{resolved_name}' '{run_id}'")
+    console.print(f"  Check status: keyspaces-bulk-cli status '{resolved_name}' '{run_id}'")
 
 
 @app.command("compress-partition")
@@ -1198,7 +1176,7 @@ def run_compress_partition(
     run_id = start_job_run(client, resolved_name, arguments, workers)
     console.print(f"[green]Started compress-partition job run:[/green] {run_id}")
     console.print(f"  Job: {resolved_name}")
-    console.print(f"  Check status: keyspaces-glue status '{resolved_name}' '{run_id}'")
+    console.print(f"  Check status: keyspaces-bulk-cli status '{resolved_name}' '{run_id}'")
 
 
 @app.command("top-partitions")
@@ -1231,7 +1209,7 @@ def run_top_partitions(
     run_id = start_job_run(client, resolved_name, arguments, workers)
     console.print(f"[green]Started top-partitions job run:[/green] {run_id}")
     console.print(f"  Job: {resolved_name}")
-    console.print(f"  Check status: keyspaces-glue status '{resolved_name}' '{run_id}'")
+    console.print(f"  Check status: keyspaces-bulk-cli status '{resolved_name}' '{run_id}'")
 
 
 if __name__ == "__main__":

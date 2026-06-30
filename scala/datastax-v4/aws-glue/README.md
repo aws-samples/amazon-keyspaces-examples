@@ -1,4 +1,4 @@
-## Amazon Keyspaces Glue CLI
+## Amazon Keyspaces Bulk CLI
 
 A CLI for launching, monitoring, and managing AWS Glue jobs that operate on Amazon Keyspaces tables. Instead of navigating the AWS Console or writing `aws glue start-job-run` commands with long JSON argument strings, use simple named commands like `export`, `count`, or `compress-partition`.
 
@@ -15,10 +15,10 @@ git clone https://github.com/aws-samples/amazon-keyspaces-examples.git
 cd amazon-keyspaces-examples/scala/datastax-v4/aws-glue
 
 # Bootstrap everything: infrastructure, JARs, configs, and Glue jobs
-./keyspaces-glue bootstrap --stack aksglue
+./keyspaces-bulk-cli bootstrap --stack aksglue
 
 # Run your first export
-./keyspaces-glue export --keyspace mykeyspace --table mytable --s3-uri s3://my-bucket
+./keyspaces-bulk-cli export --keyspace mykeyspace --table mytable --s3-uri s3://my-bucket
 ```
 
 The CLI automatically creates a virtual environment and installs dependencies on first run.
@@ -27,16 +27,16 @@ The CLI automatically creates a virtual environment and installs dependencies on
 
 ```bash
 # Auto-discover your stack from existing Glue jobs and save it
-./keyspaces-glue config --discover
+./keyspaces-bulk-cli config --discover
 
 # Export a table to S3
-./keyspaces-glue export --keyspace mykeyspace --table mytable --s3-uri s3://my-bucket
+./keyspaces-bulk-cli export --keyspace mykeyspace --table mytable --s3-uri s3://my-bucket
 
 # Check run status (defaults to latest run)
-./keyspaces-glue status export
+./keyspaces-bulk-cli status export
 
 # View logs
-./keyspaces-glue logs export --log-type error
+./keyspaces-bulk-cli logs export --log-type error
 ```
 
 ## Bootstrap
@@ -53,20 +53,20 @@ The `bootstrap` command sets up the entire Keyspaces Glue infrastructure from sc
 3. **Builds the retry policy helper** by cloning and compiling `amazon-keyspaces-java-driver-helpers`
 4. **Uploads all JARs** to `s3://{bucket}/jars/`
 5. **Uploads config files** (`cassandra-application.conf`, `keyspaces-application.conf`) to `s3://{bucket}/conf/`
-6. **Deploys all Glue jobs** (export, import, count, bulk-delete, modify-ttl, incremental-export, incremental-import, top-partitions, compress-partition)
-7. **Saves the stack name** to `.keyspaces-glue.json` so subsequent commands auto-resolve
+6. **Deploys Glue jobs** (export, import, count)
+7. **Saves the stack name** to `.keyspaces-bulk-cli.json` so subsequent commands auto-resolve
 
 ### Usage
 
 ```bash
 # Minimal — uses all defaults (stack=aksglue, bucket auto-named, etc.)
-./keyspaces-glue bootstrap
+./keyspaces-bulk-cli bootstrap
 
 # Custom stack name
-./keyspaces-glue bootstrap --stack myproject
+./keyspaces-bulk-cli bootstrap --stack myproject
 
 # Full customization
-./keyspaces-glue bootstrap \
+./keyspaces-bulk-cli bootstrap \
   --stack myproject \
   --bucket my-custom-bucket-name \
   --role-name my-glue-role \
@@ -76,7 +76,7 @@ The `bootstrap` command sets up the entire Keyspaces Glue infrastructure from sc
   --region us-west-2
 
 # Infrastructure only (skip Glue job creation)
-./keyspaces-glue bootstrap --stack myproject --skip-jobs
+./keyspaces-bulk-cli bootstrap --stack myproject --skip-jobs
 ```
 
 ### Options
@@ -84,8 +84,8 @@ The `bootstrap` command sets up the entire Keyspaces Glue infrastructure from sc
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--stack` | `aksglue` | CloudFormation stack name prefix |
-| `--bucket` | `amazon-keyspaces-glue-{stack}-{account_id}` | S3 bucket for artifacts |
-| `--role-name` | `amazon-keyspaces-glue-servcie-role-{stack}` | IAM service role name |
+| `--bucket` | `amazon-keyspaces-bulk-cli-{stack}-{account_id}` | S3 bucket for artifacts |
+| `--role-name` | `amazon-keyspaces-bulk-cli-servcie-role-{stack}` | IAM service role name |
 | `--keyspace` | `mykeyspace` | Default keyspace for deployed jobs |
 | `--table` | `mytable` | Default table for deployed jobs |
 | `--s3-uri` | `s3://{bucket}/export` | Default S3 path for export/import |
@@ -106,23 +106,23 @@ The CLI needs to know which CloudFormation stack name was used when deploying th
 
 1. `--stack <name>` flag on the command
 2. `KEYSPACES_GLUE_STACK` environment variable
-3. `.keyspaces-glue.json` config file (checked in current directory, then home directory)
+3. `.keyspaces-bulk-cli.json` config file (checked in current directory, then home directory)
 4. **Auto-discover** from existing Glue jobs in the account
 
 ### Setting the Stack
 
 ```bash
 # Option 1: Auto-discover from your account's Glue jobs
-./keyspaces-glue config --discover
+./keyspaces-bulk-cli config --discover
 
 # Option 2: Set explicitly
-./keyspaces-glue config --stack mystack
+./keyspaces-bulk-cli config --stack mystack
 
 # Option 3: Environment variable
 export KEYSPACES_GLUE_STACK=aksglue
 
 # Option 4: Pass on every command
-./keyspaces-glue export --stack mystack --keyspace mykeyspace --table mytable --s3-uri s3://bucket
+./keyspaces-bulk-cli export --stack mystack --keyspace mykeyspace --table mytable --s3-uri s3://bucket
 ```
 
 ## Commands
@@ -165,7 +165,7 @@ Optional overrides for all lifecycle commands:
 
 | Command | Description |
 |---------|-------------|
-| `config --stack <name>` | Save stack name to `.keyspaces-glue.json` |
+| `config --stack <name>` | Save stack name to `.keyspaces-bulk-cli.json` |
 | `config --discover` | Auto-detect stack from existing Glue jobs |
 | `config --show` | Display current config and resolution order |
 
@@ -175,14 +175,14 @@ Optional overrides for all lifecycle commands:
 
 ```bash
 # Export table to S3 as parquet
-./keyspaces-glue export \
+./keyspaces-bulk-cli export \
   --keyspace production \
   --table users \
   --s3-uri s3://my-data-bucket \
   --format parquet
 
 # Import data back into a different table
-./keyspaces-glue import \
+./keyspaces-bulk-cli import \
   --keyspace production \
   --table users_restored \
   --s3-uri s3://my-data-bucket/export/production/users/snapshot/year=2025/month=01/day=15/hour=10/minute=30 \
@@ -193,12 +193,12 @@ Optional overrides for all lifecycle commands:
 
 ```bash
 # Total row count
-./keyspaces-glue count \
+./keyspaces-bulk-cli count \
   --keyspace production \
   --table orders
 
 # Distinct count on specific columns
-./keyspaces-glue count \
+./keyspaces-bulk-cli count \
   --keyspace production \
   --table orders \
   --distinct-keys "customer_id,product_id"
@@ -207,7 +207,7 @@ Optional overrides for all lifecycle commands:
 ### Bulk Delete with Backup
 
 ```bash
-./keyspaces-glue bulk-delete \
+./keyspaces-bulk-cli bulk-delete \
   --keyspace production \
   --table events \
   --where-clause "status == 'expired'" \
@@ -219,13 +219,13 @@ Optional overrides for all lifecycle commands:
 
 ```bash
 # Add 30 days (default) to TTL
-./keyspaces-glue modify-ttl \
+./keyspaces-bulk-cli modify-ttl \
   --keyspace production \
   --table sessions \
   --ttl-field ttl
 
 # Subtract 7 days from TTL
-./keyspaces-glue modify-ttl \
+./keyspaces-bulk-cli modify-ttl \
   --keyspace production \
   --table sessions \
   --ttl-field ttl \
@@ -235,7 +235,7 @@ Optional overrides for all lifecycle commands:
 ### Incremental Export (Diff Two Snapshots)
 
 ```bash
-./keyspaces-glue incremental-export \
+./keyspaces-bulk-cli incremental-export \
   --keyspace production \
   --table orders \
   --past-uri s3://my-bucket/export/production/orders/snapshot/year=2025/month=01/day=01 \
@@ -247,14 +247,14 @@ Optional overrides for all lifecycle commands:
 ### Compress Partitions
 
 ```bash
-./keyspaces-glue compress-partition \
+./keyspaces-bulk-cli compress-partition \
   --keyspace analytics \
   --source-table raw_events \
   --target-table compressed_events \
   --compression ZSTD
 
 # Compress only data older than a date
-./keyspaces-glue compress-partition \
+./keyspaces-bulk-cli compress-partition \
   --keyspace analytics \
   --source-table raw_events \
   --target-table compressed_events \
@@ -265,7 +265,7 @@ Optional overrides for all lifecycle commands:
 ### Find Top Partitions
 
 ```bash
-./keyspaces-glue top-partitions \
+./keyspaces-bulk-cli top-partitions \
   --keyspace production \
   --table orders \
   --group-by "customer_id" \
@@ -277,32 +277,32 @@ Optional overrides for all lifecycle commands:
 
 ```bash
 # List recent runs
-./keyspaces-glue runs export
+./keyspaces-bulk-cli runs export
 
 # Get detailed status of latest run
-./keyspaces-glue status export
+./keyspaces-bulk-cli status export
 
 # View output logs (latest run)
-./keyspaces-glue logs export
+./keyspaces-bulk-cli logs export
 
 # View error logs (latest run)
-./keyspaces-glue logs export --log-type error
+./keyspaces-bulk-cli logs export --log-type error
 
 # Specific run ID
-./keyspaces-glue logs count --run-id jr_abc123
-./keyspaces-glue status count --run-id jr_abc123
+./keyspaces-bulk-cli logs count --run-id jr_abc123
+./keyspaces-bulk-cli status count --run-id jr_abc123
 
 # Override with full job name
-./keyspaces-glue logs count --job-name AmazonKeyspacesCount-aksglue-count --run-id jr_abc123
+./keyspaces-bulk-cli logs count --job-name AmazonKeyspacesCount-aksglue --run-id jr_abc123
 
 # Cancel the latest running job
-./keyspaces-glue cancel export
+./keyspaces-bulk-cli cancel export
 ```
 
 ### Override Workers for Large Jobs
 
 ```bash
-./keyspaces-glue export \
+./keyspaces-bulk-cli export \
   --keyspace production \
   --table large_table \
   --s3-uri s3://my-bucket \
@@ -368,10 +368,10 @@ Where `{type}` is one of: `snapshot`, `incremental`, or `bulk-delete`.
 
 | File | Purpose |
 |------|---------|
-| `keyspaces-glue` | CLI entrypoint (shell wrapper) |
+| `keyspaces-bulk-cli` | CLI entrypoint (shell wrapper) |
 | `keyspaces_glue_cli.py` | CLI application (Python) |
 | `requirements.txt` | Python dependencies |
-| `.keyspaces-glue.json` | Local config (created by `config` command) |
+| `.keyspaces-bulk-cli.json` | Local config (created by `config` command) |
 | `glue-setup-template.yaml` | Base CloudFormation template (IAM role, S3 bucket) |
 | `keyspaces-application.conf` | Driver config for Amazon Keyspaces |
 | `cassandra-application.conf` | Driver config for Apache Cassandra |

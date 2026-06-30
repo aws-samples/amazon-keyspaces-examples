@@ -1,7 +1,7 @@
 # Migration to Amazon Keyspaces from Apache Cassandra
 This example provides Scala scripts for migrating a Cassandra workload to Amazon Keyspaces using AWS Glue. This allows you to migrate data from a Cassandra cluster to Amazon Keyspaces without setting up a Spark cluster.
 
-This is a specialized workflow that connects directly to a self-managed Cassandra cluster via VPC. It is not managed by the `keyspaces-glue` CLI bootstrap — it requires manual Glue job creation (see below).
+This is a specialized workflow that connects directly to a self-managed Cassandra cluster via VPC. It is not managed by the `keyspaces-bulk-cli` CLI bootstrap — it requires manual Glue job creation (see below).
 
 ## Prerequisites
 * Cassandra source table accessible via AWS Glue network connection (VPC)
