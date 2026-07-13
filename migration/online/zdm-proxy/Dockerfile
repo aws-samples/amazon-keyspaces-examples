@@ -5,13 +5,8 @@ RUN apk add --no-cache socat bind-tools curl openssl
 
 RUN mkdir -p /app
 
-ADD https://certs.secureserver.net/repository/sf-class2-root.crt /app/sf-class2-root.crt
-
-# Declare build-time ARG
-#ARG ARG_KEYSPACES_ENPOINT=cassandra.us-east-1.amazonaws.com
-
-# Make it available at runtime via ENV
-# ENV KEYSPACES_ENPOINT=${ARG_KEYSPACES_ENPOINT
+# Download Amazon Root CA 1 for TLS verification with Keyspaces VPC endpoints
+ADD https://www.amazontrust.com/repository/AmazonRootCA1.pem /app/AmazonRootCA1.pem
 
 COPY entrypoint.sh /entrypoint.sh
 

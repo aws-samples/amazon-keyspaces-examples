@@ -3,20 +3,20 @@ set -ex
 
 # Resolve Cassandra IP
 REGION=${AWS_REGION:-"us-east-1"}
-ENPOINT="cassandra.${REGION}.amazonaws.com"
+ENDPOINT="cassandra.${REGION}.amazonaws.com"
 CASSANDRA_PORT=9142
 
-CASSANDRA_IP=$(dig +short "$ENPOINT" | head -n 1)
+CASSANDRA_IP=$(dig +short "$ENDPOINT" | head -n 1)
 
 if [ -z "$CASSANDRA_IP" ]; then
-  echo "❌ Failed to resolve $ENPOINT"
+  echo "❌ Failed to resolve $ENDPOINT"
   exit 1
 fi
 
-echo "✅ Resolved $ENPOINT → $CASSANDRA_IP"
+echo "✅ Resolved $ENDPOINT → $CASSANDRA_IP"
 
-# Start local proxy (e.g. socat)
-socat TCP-LISTEN:9142,bind=127.0.0.1,reuseaddr,fork SSL:$CASSANDRA_IP:$CASSANDRA_PORT,verify=1,cafile=/app/sf-class2-root.crt,openssl-commonname=$ENPOINT &
+# Start socat TLS proxy to forward localhost:9142 → Keyspaces VPC endpoint with TLS + SNI
+socat TCP-LISTEN:9142,bind=127.0.0.1,reuseaddr,fork SSL:$CASSANDRA_IP:$CASSANDRA_PORT,verify=1,cafile=/app/AmazonRootCA1.pem,openssl-commonname=$ENDPOINT,openssl-snihost=$ENDPOINT &
 
 if [ -n "$AWS_NLB_DNS" ]; then
   echo "✅ AWS_NLB_DNS is set: $AWS_NLB_DNS"
