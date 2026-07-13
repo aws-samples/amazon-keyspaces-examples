@@ -121,7 +121,7 @@ The following environment variables are set automatically by the CloudFormation 
 Once deployed:
 
 - Point your application to the NLB DNS name output by the CloudFormation stack on port 14002.
-- Authenticate with Keyspaces service-specific credentials (the proxy forwards these to Keyspaces and uses the configured origin credentials for Cassandra).
+- Authenticate with your **origin Cassandra credentials** (the proxy forwards client credentials to the origin cluster and uses the separately configured `ZDM_TARGET_USERNAME`/`ZDM_TARGET_PASSWORD` for Amazon Keyspaces).
 - Use `LOCAL_QUORUM` consistency level (required by Amazon Keyspaces).
 - Test dual writes by verifying data in both origin and target clusters.
 
